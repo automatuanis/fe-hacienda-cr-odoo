@@ -1,17 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-<data>
+<data noupdate="0">
 <template id="account.report_invoice_document">
      <t t-call="web.external_layout">
         <t t-set="o" t-value="o.with_context({'lang':o.partner_id.lang})"/>
         <div class="page">
-          <div style="float:right; margin-right:100px ">
-            <div name="invoice_address">
-              <address t-field="o.partner_id" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;], &quot;no_marker&quot;: True}"/>
-              <div t-if="o.partner_id.vat" class="mt16"><t t-esc="o.company_id.country_id.vat_label or 'TIN'"/>: <span t-field="o.partner_id.vat"/></div>
+            <div class="row">
+                <div name="invoice_address" class="col-xs-5 col-xs-offset-7">
+                    <address t-field="o.partner_id"
+                        t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}' />
+                    <div t-if="o.partner_id.vat" class="mt16"><t t-esc="o.company_id.country_id.vat_label or 'TIN'"/>: <span t-field="o.partner_id.vat"/></div>
+                </div>
             </div>
-          </div>
-           <h2>
+
+            <h2>
               <span t-if="o.type == 'out_invoice' and (o.state == 'open' or o.state == 'paid')">Invoice</span>
               <span t-if="o.type == 'out_invoice' and o.state == 'draft'">Draft Invoice</span>
               <span t-if="o.type == 'out_invoice' and o.state == 'cancel'">Cancelled Invoice</span>
@@ -19,7 +21,6 @@
               <span t-if="o.type == 'in_refund'">Vendor Credit Note</span>
               <span t-if="o.type == 'in_invoice'">Vendor Bill</span>
               <span t-field="o.number"/>
-
             </h2>
             <div>
               <div class="row">
@@ -78,7 +79,10 @@
                     </tr>
                 </thead>
                 <tbody class="invoice_tbody">
+                    <t t-set="totalIVADevuelto" t-value="0.00"/>
+
                     <tr t-foreach="o.invoice_line_ids" t-as="l">
+                        <t t-if="'04' in l.invoice_line_tax_ids.mapped('iva_tax_code') and o.payment_methods_id.sequence == '02'" t-set="totalIVADevuelto" t-value="totalIVADevuelto + (l.price_total - l.price_subtotal)"/>
                         <td><span t-field="l.name"/></td>
                         <td class="hidden"><span t-field="l.origin"/></td>
                         <td class="text-right">
@@ -144,7 +148,7 @@
                             <tr class="border-black">
                                 <td><strong>Total</strong></td>
                                 <td class="text-right">
-                                    <span t-field="o.amount_total" t-options="{&quot;widget&quot;: &quot;monetary&quot;, &quot;display_currency&quot;: o.currency_id}"/>
+                                    <span t-esc="o.amount_total" t-options="{&quot;widget&quot;: &quot;monetary&quot;, &quot;display_currency&quot;: o.currency_id}"/>
                                 </td>
                             </tr>
                         </table>

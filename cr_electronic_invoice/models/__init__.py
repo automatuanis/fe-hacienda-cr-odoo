@@ -1,20 +1,34 @@
 # -*- coding: utf-8 -*-
 
-from . import electronic_invoice
+from . import res_partner
+from . import res_company
+from . import economic_activity
+from . import product
+from . import product_uom
+
+from . import electronic_invoice_schema
+from . import electronic_invoice_version
+from . import eicr_hacienda
+from . import eicr_tools
+from . import eicr_extra_node
+from . import account_tax
+from . import account_tax_template
+from . import account_invoice
+from . import account_invoice_line
+from . import account_invoice_refund
 from . import account_journal
-from . import api_facturae
-from . import fe_enums
-from . import account
-from . import account_payment
+from . import account_payment_term
+from . import identificacion_type
+from . import ir_sequence
+from . import eicr_exoneration
+
 from . import code_type_product
-from . import electronic_invoice
-from . import exoneration
-from . import identification_type
-from . import product_template
+from . import credit_conditions
+from . import payment_methods
 from . import reference_code
 from . import reference_document
-from . import res_company
-from . import res_partner
 from . import resolution
-from . import sale_condition
-from . import uom
+from . import sale_conditions
+
+from . import product_category
+from . import product_template

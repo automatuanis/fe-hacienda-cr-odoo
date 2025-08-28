@@ -5,3 +5,16 @@ access_PaymentMethods,payment.methods,model_payment_methods,account.group_accoun
 access_SaleConditions,sale.conditions,model_sale_conditions,account.group_account_invoice,1,0,0,0
 access_ReferenceDocument,reference.document,model_reference_document,account.group_account_invoice,1,0,0,0
 access_ReferenceCode,reference.code,model_reference_code,account.group_account_invoice,1,0,0,0
+access_ElectronicInvoiceSchema,electronic_invoice.schema,model_electronic_invoice_schema,account.group_account_invoice,1,0,0,0
+access_ElectronicInvoiceVersion,electronic_invoice.version,model_electronic_invoice_version,account.group_account_invoice,1,0,0,0
+access_economic_activity,economic_activity,model_economic_activity,account.group_account_invoice,1,0,0,0
+access_credit_conditions,credit_conditions,model_credit_conditions,account.group_account_invoice,1,0,0,0
+
+access_eicr_exoneration_type,eicr.exoneration_type,model_eicr_exoneration_type,base.group_user,1,0,0,0
+edit_eicr_exoneration_type,eicr.exoneration_type,model_eicr_exoneration_type,account.group_account_invoice,1,1,1,1
+
+access_eicr_exoneration,eicr.exoneration,model_eicr_exoneration,base.group_user,1,0,0,0
+edit_eicr_exoneration,eicr.exoneration,model_eicr_exoneration,account.group_account_invoice,1,1,1,1
+
+access_eicr_extra_node,eicr.extra_node,model_eicr_extra_node,base.group_user,1,0,0,0
+edit_eicr_extra_node,eicr.extra_node,model_eicr_extra_node,account.group_account_manager,1,1,1,1

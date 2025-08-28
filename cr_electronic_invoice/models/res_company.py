@@ -1,45 +1,65 @@
-from odoo import models, fields, api
+# -*- coding: utf-8 -*-
+
+import logging, re
+from odoo import models, fields, api, _
+
+_logger = logging.getLogger(__name__)
 
 
 class CompanyElectronic(models.Model):
     _name = 'res.company'
     _inherit = ['res.company', 'mail.thread', ]
 
-    commercial_name = fields.Char(string="Nombre comercial", required=False, )
-    #phone_code = fields.Char(string="Código de teléfono", required=False, size=3, default="506")
-    phone_code = fields.Char(string="Código de teléfono", required=False, size=3,
-    default="506", help="Sin espacios ni guiones")
-    signature = fields.Binary(string="Llave Criptográfica", )
-    identification_id = fields.Many2one(comodel_name="identification.type", string="Tipo de identificacion",
-                                        required=False, )
-    district_id = fields.Many2one(comodel_name="res.country.district", string="Distrito", required=False, )
-    county_id = fields.Many2one(comodel_name="res.country.county", string="Cantón", required=False, )
-    neighborhood_id = fields.Many2one(comodel_name="res.country.neighborhood", string="Barrios", required=False, )
-    frm_ws_identificador = fields.Char(string="Usuario de Factura Electrónica", required=False, )
-    frm_ws_password = fields.Char(string="Password de Factura Electrónica", required=False, )
+    commercial_name = fields.Char(string="Nombre comercial")
+    phone_code = fields.Char(string="Código de teléfono", size=3, default="506")
 
-    frm_ws_ambiente = fields.Selection(
-        selection=[('disabled', 'Deshabilitado'), ('api-stag', 'Pruebas'), ('api-prod', 'Producción'), ], string="Ambiente",
+    identification_id = fields.Many2one(comodel_name="identification.type", string="Tipo de identificacion")
+    district_id = fields.Many2one(comodel_name="res.country.district", string="Distrito")
+    county_id = fields.Many2one(comodel_name="res.country.county", string="Cantón")
+    neighborhood_id = fields.Many2one(comodel_name="res.country.neighborhood", string="Barrios")
+
+    eicr_activity_ids = fields.Many2many('economic_activity', string='Actividades Económicas', oldname='eicr_activity_id')
+
+    eicr_version_id = fields.Many2one('electronic_invoice.version', 'Versión de la Facturación Electrónica')
+    eicr_username = fields.Char(string="Usuario", oldname='frm_ws_identificador')
+    eicr_password = fields.Char(string="Contraseña", oldname='frm_ws_password')
+    eicr_signature = fields.Binary(string="Llave Criptográfica", oldname='signature')
+    eicr_pin = fields.Char(string="PIN", oldname='frm_pin')
+
+    eicr_environment = fields.Selection(
+        selection=[('disabled', 'Deshabilitado'), ('api-stag', 'Pruebas'), ('api-prod', 'Producción')],
+        string="Ambiente",
         required=True, default='disabled',
-        help='Es el ambiente en al cual se le está actualizando el certificado. Para el ambiente de calidad (stag) c3RhZw==, '
-             'para el ambiente de producción (prod) '
-             'cHJvZA==. Requerido.')
-    frm_pin = fields.Char(string="Pin", required=False, help='Es el pin correspondiente al certificado. Requerido')
-    frm_callback_url = fields.Char(string="Callback Url", required=False, default="https://url_callback/repuesta.php?",
-                                   help='Es la URL en a la cual se reenviarán las respuestas de Hacienda.')
+        help='Seleccione el punto de conexión del Ministerio de Hacienda a usar',
+        oldname='frm_ws_ambiente')
 
-    activated = fields.Boolean('Activado')
-    state = fields.Selection([
-        ('draft', 'Draft'),
-        ('started', 'Started'),
-        ('progress', 'In progress'),
-        ('finished', 'Done'),
-    ], default='draft')
+    eicr_token = fields.Text('Token de sesión para el sistema de recepción de comprobantes', oldname='token')
 
-    frm_apicr_username = fields.Char(string="Usuario de Api", required=False, )
-    frm_apicr_password = fields.Char(string="Password de Api", required=False, )
-    frm_apicr_signaturecode = fields.Char(string="Codigo para Firmar API", required=False, )
+    @api.multi
+    def action_get_token(self, var=None):
+        _logger.info('checking token [%s]' % self.eicr_token)
+        self.env['eicr.hacienda'].get_token(self)
 
-    @api.onchange('email')
-    def _onchange_email(self):
-        pass
+    def action_update_info(self):
+        info = self.env['eicr.hacienda'].get_info_contribuyente(self.vat)
+        if info:
+            self.identification_id = self.env['identification.type'].search([('code', '=', info['tipoIdentificacion'])])
+            actividades = [a['codigo'] for a in info['actividades'] if a['estado'] == 'A']
+            self.eicr_activity_ids = self.env['economic_activity'].search([('code', 'in', actividades)])
+            self.env.cr.commit()
+
+    @api.onchange('vat')
+    def _onchange_vat(self):
+        identificacion = re.sub('[^0-9]', '', self.vat or '')
+        if len(identificacion) >= 9:
+            info = self.env['eicr.hacienda'].get_info_contribuyente(self.vat)
+            if info:
+                self.identification_id = self.env['identification.type'].search(
+                    [('code', '=', info['tipoIdentificacion'])])
+                actividades = [a['codigo'] for a in info['actividades'] if a['estado'] == 'A']
+                self.eicr_activity_ids = self.env['economic_activity'].search([('code', 'in', actividades)])
+                if not self.name or self.name == 'My Company' : self.name = info['nombre']
+                if info['tipoIdentificacion'] in ('01', '03', '04'):
+                    self.partner_id.is_company = False
+                elif info['tipoIdentificacion'] in ('02'):
+                    self.partner_id.is_company = True
