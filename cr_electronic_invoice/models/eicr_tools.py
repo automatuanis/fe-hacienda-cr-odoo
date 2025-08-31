@@ -2765,9 +2765,9 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
 
             InformacionReferencia = etree.Element("InformacionReferencia")
 
-            TipoDoc = etree.Element("TipoDoc")
-            TipoDoc.text = tipo
-            InformacionReferencia.append(TipoDoc)
+            TipoDocIR = etree.Element("TipoDocIR")
+            TipoDocIR.text = tipo
+            InformacionReferencia.append(TipoDocIR)
 
             Numero = etree.Element("Numero")
             Numero.text = (
@@ -2775,15 +2775,15 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             )
             InformacionReferencia.append(Numero)
 
-            FechaEmision = etree.Element("FechaEmision")
+            FechaEmisionIR = etree.Element("FechaEmisionIR")
             if not invoice.refund_invoice_id.date_issuance:
                 now_utc = datetime.now(pytz.timezone("UTC"))
                 now_cr = now_utc.astimezone(pytz.timezone("America/Costa_Rica"))
                 invoice.refund_invoice_id.fecha = now_cr.strftime("%Y-%m-%d %H:%M:%S")
                 invoice.refund_invoice_id.date_issuance = now_cr.strftime("%Y-%m-%dT%H:%M:%S-06:00")
 
-            FechaEmision.text = invoice.refund_invoice_id.date_issuance
-            InformacionReferencia.append(FechaEmision)
+            FechaEmisionIR.text = invoice.refund_invoice_id.date_issuance
+            InformacionReferencia.append(FechaEmisionIR)
 
             Codigo = etree.Element("Codigo")
             Codigo.text = invoice.reference_code_id.code
