@@ -5,7 +5,7 @@
         <!-- exoneration types -->
         <record id="ExonerationType_01" model="eicr.exoneration_type">
             <field name="code">01</field>
-            <field name="name">Compras autorizadas</field>
+            <field name="name">Compras autorizadas por la Dirección General de Tributación</field>
         </record>
 
         <record id="ExonerationType_02" model="eicr.exoneration_type">
@@ -20,22 +20,42 @@
 
         <record id="ExonerationType_04" model="eicr.exoneration_type">
             <field name="code">04</field>
-            <field name="name">Exenciones Dirección General de Hacienda</field>
+            <field name="name">Exenciones Dirección General de Hacienda Autorización Local Genérica</field>
         </record>
 
         <record id="ExonerationType_05" model="eicr.exoneration_type">
             <field name="code">05</field>
-            <field name="name">Transitorio V</field>
+            <field name="name">Exenciones Dirección General de Hacienda Transitorio V (servicios de ingeniería, arquitectura, topografía obra civil)</field>
         </record>
 
         <record id="ExonerationType_06" model="eicr.exoneration_type">
             <field name="code">06</field>
-            <field name="name">Transitorio IX</field>
+            <field name="name">Servicios turísticos inscritos ante el Instituto Costarricense de Turismo (ICT)</field>
         </record>
 
         <record id="ExonerationType_07" model="eicr.exoneration_type">
             <field name="code">07</field>
-            <field name="name">Transitorio XVII</field>
+            <field name="name">Transitorio XVII (Recolección, Clasificación, almacenamiento de Reciclaje y reutilizable)</field>
+        </record>
+
+        <record id="ExonerationType_08" model="eicr.exoneration_type">
+            <field name="code">08</field>
+            <field name="name">Exoneración a Zona Franca</field>
+        </record>
+
+        <record id="ExonerationType_09" model="eicr.exoneration_type">
+            <field name="code">09</field>
+            <field name="name">Exoneración de servicios complementarios para la exportación articulo 11 RLIVA </field>
+        </record>
+
+        <record id="ExonerationType_10" model="eicr.exoneration_type">
+            <field name="code">10</field>
+            <field name="name">Órgano de las corporaciones municipales </field>
+        </record>
+
+        <record id="ExonerationType_11" model="eicr.exoneration_type">
+            <field name="code">11</field>
+            <field name="name">Exenciones Dirección General de Hacienda Autorización de Impuesto Local Concreta</field>
         </record>
 
         <record id="ExonerationType_99" model="eicr.exoneration_type">
