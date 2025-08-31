@@ -2340,13 +2340,14 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
 
             impuestos = linea.invoice_line_tax_ids - impuestoServicio - impuestoIVADevuelto
             monto_exoneracion_linea = 0
+            monto_impuestos = 0
             
             if impuestos:
                 for impuesto in impuestos:
-                    monto = round(linea.price_subtotal * impuesto.amount / 100.00, decimales)
+                    monto_impuestos = round(linea.price_subtotal * impuesto.amount / 100.00, decimales)
                 
                     if impuesto.has_exoneration:
-                        totalExonerado += abs(monto)
+                        totalExonerado += abs(monto_impuestos)
                         Exoneracion = etree.Element("Exoneracion")
 
                         TipoDocumento = etree.Element("TipoDocumento")
@@ -2375,10 +2376,10 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                         Exoneracion.append(PorcentajeExoneracion)
 
                         MontoExoneracion = etree.Element("MontoExoneracion")
-                        MontoExoneracion.text = str(round(abs(monto), decimales))
+                        MontoExoneracion.text = str(round(abs(monto_impuestos), decimales))
                         Exoneracion.append(MontoExoneracion)
 
-                        totalImpuesto += monto
+                        totalImpuesto += monto_impuestos
                         Impuesto = LineaDetalle.find("Impuesto")
                         Impuesto.append(Exoneracion)
                         print(Impuesto)
@@ -2393,7 +2394,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                             linea.price_subtotal * exonerated_tax_id.amount / 100.00, decimales
                         )
                         monto_exoneracion_linea += monto_exoneracion
-                        # ImpuestoNeto.text = str(round(monto - monto_exoneracion, decimales))
+                        # ImpuestoNeto.text = str(round(monto_impuestos - monto_exoneracion, decimales))
 
                         # Impuesto.addnext(ImpuestoNeto)
 
@@ -2422,8 +2423,8 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
 
                         Monto = etree.Element("Monto")
 
-                        totalImpuesto += monto
-                        Monto.text = str(round(monto, decimales))
+                        totalImpuesto += monto_impuestos
+                        Monto.text = str(round(monto_impuestos, decimales))
                         Impuesto.append(Monto)
 
                         LineaDetalle.append(Impuesto)
@@ -2452,7 +2453,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             )
             
             ImpuestoNeto = etree.Element("ImpuestoNeto")
-            ImpuestoNeto.text = str(round(monto - monto_exoneracion_linea, decimales))
+            ImpuestoNeto.text = str(round(monto_impuestos - monto_exoneracion_linea, decimales))
             LineaDetalle.append(ImpuestoNeto)
 
             MontoTotalLinea = etree.Element("MontoTotalLinea")
