@@ -2192,8 +2192,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
 
         # Condicion Venta
         CondicionVenta = etree.Element("CondicionVenta")
-        if invoice.payment_term_id:
-            CondicionVenta.text = "02"
+        if invoice.payment_term_id and len(invoice.payment_term_id.line_ids) > 0 and invoice.payment_term_id.line_ids[0].value == "balance" and invoice.payment_term_id.line_ids[0].days > 0:
             Documento.append(CondicionVenta)
 
             PlazoCredito = etree.Element("PlazoCredito")
@@ -2660,22 +2659,23 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
         if totalImpuesto:
             
             for invoice_tax_line in invoice.tax_line_ids:
-                TotalDesgloseImpuesto = etree.Element("TotalDesgloseImpuesto")
-                
-                Codigo = etree.Element("Codigo")
-                Codigo.text = invoice_tax_line.tax_id.tax_code
-                TotalDesgloseImpuesto.append(Codigo)
+                if invoice_tax_line.amount >= 0:
+                    TotalDesgloseImpuesto = etree.Element("TotalDesgloseImpuesto")
+                    
+                    Codigo = etree.Element("Codigo")
+                    Codigo.text = invoice_tax_line.tax_id.tax_code
+                    TotalDesgloseImpuesto.append(Codigo)
 
-                if invoice_tax_line.tax_id.tax_code == "01":
-                    CodigoTarifaIVA = etree.Element("CodigoTarifaIVA")
-                    CodigoTarifaIVA.text = invoice_tax_line.tax_id.iva_tax_code
-                    TotalDesgloseImpuesto.append(CodigoTarifaIVA)
+                    if invoice_tax_line.tax_id.tax_code == "01":
+                        CodigoTarifaIVA = etree.Element("CodigoTarifaIVA")
+                        CodigoTarifaIVA.text = invoice_tax_line.tax_id.iva_tax_code
+                        TotalDesgloseImpuesto.append(CodigoTarifaIVA)
 
-                TotalMontoImpuesto = etree.Element("TotalMontoImpuesto")
-                TotalMontoImpuesto.text = str(round(invoice_tax_line.amount_total, decimales))
-                TotalDesgloseImpuesto.append(TotalMontoImpuesto)
-                
-                ResumenFactura.append(TotalDesgloseImpuesto)
+                    TotalMontoImpuesto = etree.Element("TotalMontoImpuesto")
+                    TotalMontoImpuesto.text = str(round(invoice_tax_line.amount_total, decimales))
+                    TotalDesgloseImpuesto.append(TotalMontoImpuesto)
+                    
+                    ResumenFactura.append(TotalDesgloseImpuesto)
 
             TotalImpuesto = etree.Element("TotalImpuesto")
             # TotalImpuesto.text = str(round(invoice.amount_tax, decimales))
