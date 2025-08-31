@@ -65,7 +65,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             tipo = "05"
             if object.type == "out_invoice":
                 tipo = "01"  # Factura Electrónica
-                if object.company_id.eicr_version_id.name == "v4.3" and not receptor_valido:
+                if object.company_id.eicr_version_id.name in ("v4.3", "v4.4") and not receptor_valido:
                     tipo = "04"  # Tiquete Electrónico
             elif object.type == "out_refund" and object.amount_total_signed > 0:
                 tipo = "02"  # Nota Débito
@@ -2249,18 +2249,18 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             NumeroLinea.text = "%s" % (indice + 1)
             LineaDetalle.append(NumeroLinea)
 
-            Codigo = etree.Element("Codigo")
+            CodigoCABYS = etree.Element("CodigoCABYS")
             if linea.product_id and linea.product_id.cabys_code:
-                Codigo.text = linea.product_id.cabys_code
+                CodigoCABYS.text = linea.product_id.cabys_code
             elif linea.product_id.categ_id and linea.product_id.categ_id.cabys_code:
-                Codigo.text = linea.product_id.categ_id.cabys_code
+                CodigoCABYS.text = linea.product_id.categ_id.cabys_code
             elif invoice.company_id.cabys_product_id:
-                Codigo.text = invoice.company_id.cabys_product_id.codigo
+                CodigoCABYS.text = invoice.company_id.cabys_product_id.codigo
             else:
                 raise UserError(
                     "No se ha seleccionado un código Cabys para [%s]" % linea.name[:200]
                 )
-            LineaDetalle.append(Codigo)
+            LineaDetalle.append(CodigoCABYS)
 
             if linea.product_id.default_code:
                 CodigoComercial = etree.Element("CodigoComercial")
@@ -2320,6 +2320,10 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
 
                 MontoDescuento.text = str(montoDescuento)
                 Descuento.append(MontoDescuento)
+                
+                CodigoDescuento = etree.Element("CodigoDescuento")
+                CodigoDescuento.text = "07"
+                Descuento.append(CodigoDescuento)
 
                 NaturalezaDescuento = etree.Element("NaturalezaDescuento")
                 NaturalezaDescuento.text = "Descuento Comercial"
@@ -2331,12 +2335,17 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             SubTotal.text = str(round(linea.price_subtotal, decimales))
             LineaDetalle.append(SubTotal)
 
-            impuestos = linea.invoice_line_tax_ids - impuestoServicio - impuestoIVADevuelto
+            BaseImponible = etree.Element("BaseImponible")
+            BaseImponible.text = str(round(linea.price_subtotal, decimales))
+            LineaDetalle.append(BaseImponible)
 
+            impuestos = linea.invoice_line_tax_ids - impuestoServicio - impuestoIVADevuelto
+            monto_exoneracion_linea = 0
+            
             if impuestos:
                 for impuesto in impuestos:
                     monto = round(linea.price_subtotal * impuesto.amount / 100.00, decimales)
-
+                
                     if impuesto.has_exoneration:
                         totalExonerado += abs(monto)
                         Exoneracion = etree.Element("Exoneracion")
@@ -2380,13 +2389,14 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                             lambda t: t.has_exoneration
                         )
 
-                        ImpuestoNeto = etree.Element("ImpuestoNeto")
+                        # ImpuestoNeto = etree.Element("ImpuestoNeto")
                         monto_exoneracion = round(
                             linea.price_subtotal * exonerated_tax_id.amount / 100.00, decimales
                         )
-                        ImpuestoNeto.text = str(round(monto - monto_exoneracion, decimales))
+                        monto_exoneracion_linea += monto_exoneracion
+                        # ImpuestoNeto.text = str(round(monto - monto_exoneracion, decimales))
 
-                        Impuesto.addnext(ImpuestoNeto)
+                        # Impuesto.addnext(ImpuestoNeto)
 
                         if linea.product_id and linea.product_id.type == "service":
                             totalServiciosGravados -= linea.price_subtotal
@@ -2403,9 +2413,9 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                         Impuesto.append(Codigo)
 
                         if impuesto.tax_code == "01":
-                            CodigoTarifa = etree.Element("CodigoTarifa")
-                            CodigoTarifa.text = impuesto.iva_tax_code
-                            Impuesto.append(CodigoTarifa)
+                            CodigoTarifaIVA = etree.Element("CodigoTarifaIVA")
+                            CodigoTarifaIVA.text = impuesto.iva_tax_code
+                            Impuesto.append(CodigoTarifaIVA)
 
                             Tarifa = etree.Element("Tarifa")
                             Tarifa.text = str(round(impuesto.amount, decimales))
@@ -2418,6 +2428,10 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                         Impuesto.append(Monto)
 
                         LineaDetalle.append(Impuesto)
+                        
+                        ImpuestoAsumidoEmisorFabrica = etree.Element("ImpuestoAsumidoEmisorFabrica")
+                        ImpuestoAsumidoEmisorFabrica.text = str(0)
+                        LineaDetalle.append(ImpuestoAsumidoEmisorFabrica)
 
                         if linea.product_id and linea.product_id.type == "service":
                             totalServiciosGravados += linea.price_subtotal
@@ -2437,6 +2451,11 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                     )
                 )
             )
+            
+            ImpuestoNeto = etree.Element("ImpuestoNeto")
+            ImpuestoNeto.text = str(round(monto - monto_exoneracion_linea, decimales))
+            LineaDetalle.append(ImpuestoNeto)
+
             MontoTotalLinea = etree.Element("MontoTotalLinea")
             montoTotalLinea = linea.price_total + ivaDevuelto
             totalIVADevuelto += ivaDevuelto
@@ -2513,6 +2532,17 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             TotalServExonerado = etree.Element("TotalServExonerado")
             TotalServExonerado.text = str(round(totalServExonerado, decimales))
             ResumenFactura.append(TotalServExonerado)
+            
+        # TotalServNoSujeto
+        # Este campo será de condición obligatoria, cuando
+        # se seleccionen códigos CAByS que correspondan a
+        # un servicio y el servicio sea No Sujeto de IVA
+        # TODO: calcular TotalServNoSujeto
+        #  -> disabled for now
+        # TotalServNoSujeto -> ResumenFactura
+        # TotalServNoSujeto = etree.Element("TotalServNoSujeto")
+        # TotalServNoSujeto.text = 0
+        # ResumenFactura.append(TotalServNoSujeto)
 
         if totalMercanciasGravadas or totalMercExonerada:
             TotalMercanciasGravadas = etree.Element("TotalMercanciasGravadas")
@@ -2532,6 +2562,18 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             TotalMercExonerada = etree.Element("TotalMercExonerada")
             TotalMercExonerada.text = str(round(totalMercExonerada, decimales))
             ResumenFactura.append(TotalMercExonerada)
+            
+        # TotalMercNoSujeta
+        # Este campo será de condición obligatoria, cuando
+        # se seleccionen códigos CAByS que correspondan a
+        # una mercancía y la mercancía sea No Sujeta de
+        # IVA
+        # TODO: calcular TotalMercNoSujeta
+        #  -> disabled for now
+        # TotalMercNoSujeta -> ResumenFactura
+        # TotalMercNoSujeta = etree.Element("TotalMercNoSujeta")
+        # TotalMercNoSujeta.text = 0
+        # ResumenFactura.append(TotalMercNoSujeta)
 
         if (
             totalServiciosGravados
@@ -2568,6 +2610,17 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             TotalExonerado = etree.Element("TotalExonerado")
             TotalExonerado.text = str(round(totalServExonerado + totalMercExonerada, decimales))
             ResumenFactura.append(TotalExonerado)
+            
+        # TotalNoSujeto
+        # Descr	Se obtiene de la suma de los campos "Total
+        # servicios No Sujetos de IVA" mas "Total mercancías
+        # No Sujetas de IVA".
+        # TODO: calcular TotalNoSujeto
+        #  -> disabled for now
+        # TotalNoSujeto -> ResumenFactura
+        # TotalNoSujeto = etree.Element("TotalNoSujeto")
+        # TotalNoSujeto.text = 0
+        # ResumenFactura.append(TotalNoSujeto)
 
         TotalVenta = etree.Element("TotalVenta")
         TotalVenta.text = str(
@@ -2605,10 +2658,33 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
         ResumenFactura.append(TotalVentaNeta)
 
         if totalImpuesto:
+            
+            for invoice_tax_line in invoice.tax_line_ids:
+                TotalDesgloseImpuesto = etree.Element("TotalDesgloseImpuesto")
+                
+                Codigo = etree.Element("Codigo")
+                Codigo.text = invoice_tax_line.tax_id.tax_code
+                TotalDesgloseImpuesto.append(Codigo)
+
+                if invoice_tax_line.tax_id.tax_code == "01":
+                    CodigoTarifaIVA = etree.Element("CodigoTarifaIVA")
+                    CodigoTarifaIVA.text = invoice_tax_line.tax_id.iva_tax_code
+                    TotalDesgloseImpuesto.append(CodigoTarifaIVA)
+
+                TotalMontoImpuesto = etree.Element("TotalMontoImpuesto")
+                TotalMontoImpuesto.text = str(round(invoice_tax_line.amount_total, decimales))
+                TotalDesgloseImpuesto.append(TotalMontoImpuesto)
+                
+                ResumenFactura.append(TotalDesgloseImpuesto)
+
             TotalImpuesto = etree.Element("TotalImpuesto")
             # TotalImpuesto.text = str(round(invoice.amount_tax, decimales))
             TotalImpuesto.text = str(round(totalImpuesto, decimales))
             ResumenFactura.append(TotalImpuesto)
+
+            TotalImpAsumEmisorFabrica = etree.Element("TotalImpAsumEmisorFabrica")
+            TotalImpAsumEmisorFabrica.text = "0"
+            ResumenFactura.append(TotalImpAsumEmisorFabrica)
 
             if totalIVADevuelto:
                 TotalIVADevuelto = etree.Element("TotalIVADevuelto")
@@ -2620,36 +2696,46 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             TotalOtrosCargos.text = str(round(totalImpuestoServicio, decimales))
             ResumenFactura.append(TotalOtrosCargos)
         
-        if not credit:
+        # MedioPago
+        # Este campo es de carácter obligatorio en todos los casos,
+        # excepto cuando se utilice en el campo condición de la venta,
+        # los códigos 02, 08 y 10, correspondientes a crédito.
+        # 02 Credito
+        # 08 Servicios prestados al Estado
+        # 10 Venta a crédito en IVA hasta 90 días (Artículo 27 LIVA)
+        if CondicionVenta.text not in ["02", "08", "10"]:
             # MedioPago
             MedioPago = etree.Element("MedioPago")
 
             # TipoMedioPago -> MedioPago
             TipoMedioPago = etree.Element("TipoMedioPago")
-            TipoMedioPago.text = "abc"
+            TipoMedioPago.text = invoice.payment_methods_id.sequence if invoice.payment_methods_id else "01"
             MedioPago.append(TipoMedioPago)
+            
+            # MedioPagoOtros
+            # Será obligatorio en caso de utilizar el código 99 de
+            # Otros" de la nota 6. Se debe describir puntualmente
+            # el medio de pago utilizado
+            if invoice.payment_methods_id.sequence in ["99"]:
 
-            # MedioPagoOtros -> MedioPago
-            MedioPagoOtros = etree.Element("MedioPagoOtros")
-            MedioPagoOtros.text = "abc"
-            MedioPago.append(MedioPagoOtros)
+                # MedioPagoOtros -> MedioPago
+                MedioPagoOtros = etree.Element("MedioPagoOtros")
+                MedioPagoOtros.text = "Otros"
+                MedioPago.append(MedioPagoOtros)
 
+            # TotalMedioPago
+            # Se deberá detallar el monto correspondiente al tipo
+            # de pago seleccionado. Se volverá obligatorio
+            # cuando se utilice más de un medio de pago.
+            # TODO: utilizar más de un medio de pago.
+            #  -> disabled for now
             # TotalMedioPago -> MedioPago
-            TotalMedioPago = etree.Element("TotalMedioPago")
-            TotalMedioPago.text = "abc"
-            MedioPago.append(TotalMedioPago)
+            # TotalMedioPago = etree.Element("TotalMedioPago")
+            # TotalMedioPago.text = "abc"
+            # MedioPago.append(TotalMedioPago)
 
-            # MedioPago -> Documento
-            Documento.append(MedioPago)
-
-
-        MedioPago.text = invoice.payment_mode_id.name
-        ResumenFactura.append(MedioPago)
-        
-                # MedioPago
-        MedioPago = etree.Element("MedioPago")
-        MedioPago.text = invoice.payment_methods_id.sequence if invoice.payment_methods_id else "01"
-        Documento.append(MedioPago)
+            # MedioPago -> ResumenFactura
+            ResumenFactura.append(MedioPago)
 
         TotalComprobante = etree.Element("TotalComprobante")
         TotalComprobante.text = str(round(invoice.amount_total, decimales))
