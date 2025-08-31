@@ -1,0 +1,12 @@
+id,sequence,name,notes
+DiscountType_01, 01, Descuento por Regalía,
+DiscountType_02, 02, Descuento por Regalía o Bonificaciones IVA Cobrado al Cliente,
+DiscountType_03, 03, Descuento por Bonificación,
+DiscountType_04, 04, Descuento por volumen,
+DiscountType_05, 05, Descuento por Temporada (estacional),
+DiscountType_06, 06, Descuento promocional,
+DiscountType_07, 07, Descuento Comercial,
+DiscountType_08, 08, Descuento sostenido,
+DiscountType_08, 08, Descuento por frecuencia,
+DiscountType_09, 09, Descuento sostenido,
+DiscountType_99, 99, Otros descuentos,

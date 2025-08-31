@@ -2,6 +2,7 @@
 
 from . import res_partner
 from . import res_company
+from . import discount_type
 from . import economic_activity
 from . import product
 from . import product_uom
