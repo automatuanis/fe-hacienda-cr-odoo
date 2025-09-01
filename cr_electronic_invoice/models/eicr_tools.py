@@ -2073,9 +2073,9 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
         Distrito.text = emisor.district_id.code
         Ubicacion.append(Distrito)
 
-        if emisor.partner_id.neighborhood_id:
+        if emisor.neighborhood_id and len(emisor.neighborhood_id.name) >= 5:
             Barrio = etree.Element("Barrio")
-            Barrio.text = emisor.neighborhood_id.code
+            Barrio.text = emisor.neighborhood_id.name
             Ubicacion.append(Barrio)
 
         OtrasSenas = etree.Element("OtrasSenas")
@@ -2154,9 +2154,9 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                 Distrito.text = receptor.district_id.code
                 Ubicacion.append(Distrito)
 
-                if receptor.neighborhood_id:
+                if receptor.neighborhood_id and len(receptor.neighborhood_id.name) >= 5:
                     Barrio = etree.Element("Barrio")
-                    Barrio.text = receptor.neighborhood_id.code
+                    Barrio.text = receptor.neighborhood_id.name
                     Ubicacion.append(Barrio)
 
                 OtrasSenas = etree.Element("OtrasSenas")
