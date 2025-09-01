@@ -199,6 +199,10 @@ class AccountInvoiceElectronic(models.Model):
         for invoice in self:
             self.env['eicr.hacienda']._consultar_documento(invoice)
 
+    def remake_invoice(self):
+        self.number_electronic = False
+        self._action_out_invoice_open(self)
+
     def _action_out_invoice_open(self, invoice):
 
         if invoice.type not in ('out_invoice', 'out_refund'):

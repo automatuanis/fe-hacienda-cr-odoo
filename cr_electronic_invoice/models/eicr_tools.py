@@ -2193,6 +2193,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
         # Condicion Venta
         CondicionVenta = etree.Element("CondicionVenta")
         if invoice.payment_term_id and len(invoice.payment_term_id.line_ids) > 0 and invoice.payment_term_id.line_ids[0].value == "balance" and invoice.payment_term_id.line_ids[0].days > 0:
+            CondicionVenta.text = "02"
             Documento.append(CondicionVenta)
 
             PlazoCredito = etree.Element("PlazoCredito")
