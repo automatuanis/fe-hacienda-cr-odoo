@@ -11,7 +11,7 @@
                     <field name="identificacion"/>
                     <field name="fecha_emision"/>
                     <field name="fecha_vencimiento"/>
-                    <field name="nombre_institucion"/>
+                    <field name="nombre_institucion_id"/>
                     <field name="percentage_exoneration"/>
                     <field name="nombre_institucion"/>
                 </tree>
@@ -33,6 +33,7 @@
                             <field name="percentage_exoneration" />
                             <field name="tax_id"/>
                             <field name="tipo_documento_id" />
+                            <field name="nombre_institucion_id" />
                             <field name="nombre_institucion" />
                             <field name="cabys_ids" />
                             <field name="partner_id"/>

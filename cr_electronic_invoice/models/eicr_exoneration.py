@@ -32,6 +32,7 @@ class ElectronicInvoiceCostaRicaExoneration(models.Model):
     percentage_exoneration = fields.Float("Porcentaje de exoneración")
     tipo_documento_id = fields.Many2one('eicr.exoneration_type')
     nombre_institucion = fields.Char('Nombre Institución')
+    nombre_institucion_id = fields.Many2one('eicr.exoneration_issuer')
     cabys_ids = fields.Many2many('cabys.producto')
     tax_id = fields.Many2one('account.tax', 'Impuesto', domain=[('type_tax_use', '=', 'sale')], required=True)
 

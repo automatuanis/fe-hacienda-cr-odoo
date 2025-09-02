@@ -22,7 +22,7 @@ from . import account_payment_term
 from . import identificacion_type
 from . import ir_sequence
 from . import eicr_exoneration
-
+from . import eicr_exoneration_issuer
 from . import code_type_product
 from . import credit_conditions
 from . import payment_methods
