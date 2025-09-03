@@ -2486,7 +2486,8 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                 
                 if es_exento:
                     if es_servicio:
-                        totalServiciosExentos += linea.price_subtotal
+                        # totalServiciosExentos += linea.price_subtotal
+                        totalServNoSujeto += linea.price_subtotal
                     elif es_mercancia:
                         # totalMercanciasExentas += linea.price_subtotal
                         totalMercNoSujeta += linea.price_subtotal
