@@ -2376,6 +2376,11 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                         totalDescuentosServiciosExentos += montoDescuento
                     elif es_mercancia:
                         totalDescuentosMercanciasExentas += montoDescuento
+                elif es_exonerado:
+                    if es_servicio:
+                        totalDescuentosServiciosExonerados += montoDescuento
+                    elif es_mercancia:
+                        totalDescuentosMercanciasExoneradas += montoDescuento
                 elif es_gravado:
                     if es_servicio:
                         totalDescuentosServiciosGravados += montoDescuento
@@ -2627,7 +2632,8 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             TotalMercNoSujeta.text = str(round(totalMercNoSujeta + totalDescuentosMercanciasNoSujeta, decimales))
             ResumenFactura.append(TotalMercNoSujeta)
 
-        total_gravado = totalServiciosGravados + totalDescuentosServiciosGravados+ totalMercanciasGravadas + totalDescuentosMercanciasGravadas
+        # total_gravado = totalServiciosGravados + totalDescuentosServiciosGravados+ totalMercanciasGravadas + totalDescuentosMercanciasGravadas
+        total_gravado = totalServiciosGravados + totalMercanciasGravadas
         if total_gravado:
             TotalGravado = etree.Element("TotalGravado")
             TotalGravado.text = str(
