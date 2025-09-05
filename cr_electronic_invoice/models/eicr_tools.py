@@ -2245,6 +2245,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                 ("iva_tax_code", "=", "04"),
                 ("type_tax_use", "=", "sale"),
                 ("amount", "=", -4),
+                ("company_id", "=", invoice.company_id.id)
             ]
         )
         totalIVADevuelto = 0.0
@@ -2738,7 +2739,8 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             
             # El resto de impuestos
             tax_line_ids = invoice.tax_line_ids - linea_invoice_iva - linea_invoice_iva_exoneracion
-                
+            tax_line_ids = tax_line_ids.filtered(lambda tax_line_id: tax_line_id.amount > 0)
+            
             for invoice_tax_line in tax_line_ids:
 
                 if impuesto_cobrado >= 0:
