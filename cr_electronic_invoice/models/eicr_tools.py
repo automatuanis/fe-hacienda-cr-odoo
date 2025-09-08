@@ -2200,7 +2200,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             timedelta(7)
             fecha_de_factura = datetime.strptime(invoice.date_invoice, "%Y-%m-%d")
             fecha_de_vencimiento = datetime.strptime(invoice.date_due, "%Y-%m-%d")
-            PlazoCredito.text = str((fecha_de_factura - fecha_de_vencimiento).days)
+            PlazoCredito.text = str(abs((fecha_de_vencimiento - fecha_de_factura).days))
             Documento.append(PlazoCredito)
         else:
             CondicionVenta.text = "01"
