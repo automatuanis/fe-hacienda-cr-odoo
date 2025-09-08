@@ -2492,21 +2492,31 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                 
                 if es_exento:
                     if es_servicio:
-                        # totalServiciosExentos += linea.price_subtotal
-                        totalServNoSujeto += linea.price_subtotal
+                        servicioNoSujeto = linea.price_unit * linea.quantity
+                        totalServiciosExentos += servicioNoSujeto
+                        # totalServNoSujeto += linea.price_subtotal
                     elif es_mercancia:
-                        # totalMercanciasExentas += linea.price_subtotal
-                        totalMercNoSujeta += linea.price_subtotal
+                        mercanciaNoSujeta = linea.price_unit * linea.quantity
+                        totalMercNoSujeta += mercanciaNoSujeta
+                        # totalMercNoSujeta += linea.price_subtotal
                 elif es_exonerado:
                     if es_servicio:
-                        totalServExonerado += linea.price_subtotal
+                        servicioExonerado = linea.price_unit * linea.quantity
+                        totalServExonerado += servicioExonerado
+                        # totalServExonerado += linea.price_subtotal
                     elif es_mercancia:
-                        totalMercExonerada += linea.price_subtotal
+                        mercanciaExonerada = linea.price_unit * linea.quantity
+                        totalMercExonerada += mercanciaExonerada
+                        # totalMercExonerada += linea.price_subtotal
                 elif es_gravado:
                     if es_servicio:
-                        totalServiciosGravados += linea.price_subtotal
+                        serviciosGravados = linea.price_unit * linea.quantity
+                        totalServiciosGravados += serviciosGravados
+                        # totalServiciosGravados += linea.price_subtotal
                     elif es_mercancia:
-                        totalMercanciasGravadas += linea.price_subtotal
+                        mercanciasGravadas = linea.price_unit * linea.quantity
+                        totalMercanciasGravadas += mercanciasGravadas
+                        # totalMercanciasGravadas += linea.price_subtotal
 
             impuesto_neto = monto_iva + monto_exonerado
             
@@ -2590,29 +2600,37 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
         
         if totalServiciosGravados:
             TotalServGravados = etree.Element("TotalServGravados")
-            TotalServGravados.text = str(round(totalServiciosGravados + totalDescuentosServiciosGravados, decimales))
+            # TotalServGravados.text = str(round(totalServiciosGravados + totalDescuentosServiciosGravados, decimales))
+            TotalServGravados.text = str(round(totalServiciosGravados, decimales))
             ResumenFactura.append(TotalServGravados)
         
         if totalServiciosExentos:
             TotalServExentos = etree.Element("TotalServExentos")
-            TotalServExentos.text = str(round(totalServiciosExentos + totalDescuentosServiciosExentos, decimales))
+            # TotalServExentos.text = str(round(totalServiciosExentos + totalDescuentosServiciosExentos, decimales))
+            TotalServExentos.text = str(round(totalServiciosExentos, decimales))
             ResumenFactura.append(TotalServExentos)
         
         if totalServExonerado:
             TotalServExonerado = etree.Element("TotalServExonerado")
-            TotalServExonerado.text = str(round(totalServExonerado + totalDescuentosServiciosExonerados, decimales))
+            # TotalServExonerado.text = str(round(totalServExonerado + totalDescuentosServiciosExonerados, decimales))
+            TotalServExonerado.text = str(round(totalServExonerado, decimales))
             ResumenFactura.append(TotalServExonerado)
         
         if totalServNoSujeto:
             TotalServNoSujeto = etree.Element("TotalServNoSujeto")
-            TotalServNoSujeto.text = str(round(totalServNoSujeto + totalDescuentosServiciosNoSujeto, decimales))
+            # TotalServNoSujeto.text = str(round(totalServNoSujeto + totalDescuentosServiciosNoSujeto, decimales))
+            TotalServNoSujeto.text = str(round(totalServNoSujeto, decimales))
+
             ResumenFactura.append(TotalServNoSujeto)
 
         if totalMercanciasGravadas:
             TotalMercanciasGravadas = etree.Element("TotalMercanciasGravadas")
             TotalMercanciasGravadas.text = str(
-                round(totalMercanciasGravadas + totalDescuentosMercanciasGravadas, decimales)
+                round(totalMercanciasGravadas, decimales)
             )
+            # TotalMercanciasGravadas.text = str(
+            #     round(totalMercanciasGravadas + totalDescuentosMercanciasGravadas, decimales)
+            # )
             ResumenFactura.append(TotalMercanciasGravadas)
 
         if totalMercanciasExentas:
