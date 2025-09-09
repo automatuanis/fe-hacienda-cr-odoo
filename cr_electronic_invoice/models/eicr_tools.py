@@ -2625,9 +2625,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
 
         if totalMercanciasGravadas:
             TotalMercanciasGravadas = etree.Element("TotalMercanciasGravadas")
-            TotalMercanciasGravadas.text = str(
-                round(totalMercanciasGravadas, decimales)
-            )
+            TotalMercanciasGravadas.text = str(round(totalMercanciasGravadas, decimales))
             # TotalMercanciasGravadas.text = str(
             #     round(totalMercanciasGravadas + totalDescuentosMercanciasGravadas, decimales)
             # )
@@ -2635,19 +2633,22 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
 
         if totalMercanciasExentas:
             TotalMercanciasExentas = etree.Element("TotalMercanciasExentas")
-            TotalMercanciasExentas.text = str(
-                round(totalMercanciasExentas + totalDescuentosMercanciasExentas, decimales)
-            )
+            TotalMercanciasExentas.text = str(round(totalMercanciasExentas, decimales))
+            # TotalMercanciasExentas.text = str(
+            #     round(totalMercanciasExentas + totalDescuentosMercanciasExentas, decimales)
+            # )
             ResumenFactura.append(TotalMercanciasExentas)
 
         if totalMercExonerada:
             TotalMercExonerada = etree.Element("TotalMercExonerada")
-            TotalMercExonerada.text = str(round(totalMercExonerada + totalDescuentosMercanciasExoneradas, decimales))
+            TotalMercExonerada.text = str(round(totalMercExonerada, decimales))
+            # TotalMercExonerada.text = str(round(totalMercExonerada + totalDescuentosMercanciasExoneradas, decimales))
             ResumenFactura.append(TotalMercExonerada)
             
         if totalMercNoSujeta:
             TotalMercNoSujeta = etree.Element("TotalMercNoSujeta")
-            TotalMercNoSujeta.text = str(round(totalMercNoSujeta + totalDescuentosMercanciasNoSujeta, decimales))
+            TotalMercNoSujeta.text = str(round(totalMercNoSujeta, decimales))
+            # TotalMercNoSujeta.text = str(round(totalMercNoSujeta + totalDescuentosMercanciasNoSujeta, decimales))
             ResumenFactura.append(TotalMercNoSujeta)
 
         # total_gravado = totalServiciosGravados + totalDescuentosServiciosGravados+ totalMercanciasGravadas + totalDescuentosMercanciasGravadas
@@ -2662,7 +2663,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             )
             ResumenFactura.append(TotalGravado)
 
-        total_exento = totalServiciosExentos + totalDescuentosServiciosExentos + totalMercanciasExentas + totalDescuentosMercanciasExentas
+        total_exento = totalServiciosExentos + totalMercanciasExentas
         if total_exento:
             TotalExento = etree.Element("TotalExento")
             TotalExento.text = str(
@@ -2673,7 +2674,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             )
             ResumenFactura.append(TotalExento)
             
-        total_exonerado = (totalServExonerado + totalDescuentosServiciosExonerados + totalMercExonerada + totalDescuentosMercanciasExoneradas)
+        total_exonerado = (totalServExonerado + totalMercExonerada)
         if total_exonerado:
             TotalExonerado = etree.Element("TotalExonerado")
             TotalExonerado.text = str(
