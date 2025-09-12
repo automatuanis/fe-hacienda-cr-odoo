@@ -1988,6 +1988,12 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
         CodigoActividadEmisor = etree.Element("CodigoActividadEmisor")
         CodigoActividadEmisor.text = invoice.company_id.eicr_activity_ids[0].code
         Documento.append(CodigoActividadEmisor)
+        
+        # CodigoActividadReceptor
+        if documento in ["FacturaElectronica", "NotaCreditoElectronica"] and len(invoice.partner_id.eicr_activity_ids) > 0:
+            CodigoActividadReceptor = etree.Element("CodigoActividadReceptor")
+            CodigoActividadReceptor.text = invoice.partner_id.eicr_activity_ids[0].code
+            Documento.append(CodigoActividadReceptor)
 
         # NumeroConsecutivo
         NumeroConsecutivo = etree.Element("NumeroConsecutivo")
