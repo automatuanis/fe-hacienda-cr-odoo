@@ -1826,8 +1826,12 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
 
         if totalImpuesto:
             TotalImpuesto = etree.Element("TotalImpuesto")
-            # TotalImpuesto.text = str(round(invoice.amount_tax, decimales))
-            TotalImpuesto.text = str(round(totalImpuesto, decimales))
+            # TotalImpuesto debe coincidir con la suma de TotalDesgloseImpuesto
+            # Para el caso con exoneración, debe ser el impuesto neto cobrado
+            total_impuesto_a_reportar = impuesto_cobrado
+            for invoice_tax_line in tax_line_ids:
+                total_impuesto_a_reportar += invoice_tax_line.amount
+            TotalImpuesto.text = str(round(total_impuesto_a_reportar, decimales))
             ResumenFactura.append(TotalImpuesto)
 
             if totalIVADevuelto:
@@ -2307,6 +2311,18 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                     es_exonerado = True                    
                 else:
                     es_exonerado = False
+
+            # Porcentaje de exoneración sobre la tarifa (solo aplica si es_exonerado True)
+            ratio_exoneracion = 0.0
+            if 'es_exonerado' in locals() and es_exonerado and linea_iva and linea_iva_exoneracion:
+                try:
+                    ratio_exoneracion = abs(linea_iva_exoneracion.amount) / (linea_iva.amount or 1.0)
+                except Exception:
+                    ratio_exoneracion = 0.0
+                if ratio_exoneracion < 0:
+                    ratio_exoneracion = 0.0
+                if ratio_exoneracion > 1:
+                    ratio_exoneracion = 1.0
                                     
             # Contruimos el XML   
             LineaDetalle = etree.Element("LineaDetalle")
@@ -2383,10 +2399,15 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                     elif es_mercancia:
                         totalDescuentosMercanciasExentas += montoDescuento
                 elif es_exonerado:
+                    # Se reparte el descuento proporcionalmente entre la parte exonerada y la parte gravada
+                    descuento_exonerado = round(montoDescuento * ratio_exoneracion, decimales)
+                    descuento_gravado = round(montoDescuento - descuento_exonerado, decimales)
                     if es_servicio:
-                        totalDescuentosServiciosExonerados += montoDescuento
+                        totalDescuentosServiciosExonerados += descuento_exonerado
+                        totalDescuentosServiciosGravados += descuento_gravado
                     elif es_mercancia:
-                        totalDescuentosMercanciasExoneradas += montoDescuento
+                        totalDescuentosMercanciasExoneradas += descuento_exonerado
+                        totalDescuentosMercanciasGravadas += descuento_gravado
                 elif es_gravado:
                     if es_servicio:
                         totalDescuentosServiciosGravados += montoDescuento
@@ -2506,14 +2527,16 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                         totalMercNoSujeta += mercanciaNoSujeta
                         # totalMercNoSujeta += linea.price_subtotal
                 elif es_exonerado:
+                    # Se reparte la base imponible entre Gravado y Exonerado según porcentaje de exoneración de la tarifa
+                    base_linea = linea.price_unit * linea.quantity
+                    base_exonerada = round(base_linea * ratio_exoneracion, decimales)
+                    base_gravada = round(base_linea - base_exonerada, decimales)
                     if es_servicio:
-                        servicioExonerado = linea.price_unit * linea.quantity
-                        totalServExonerado += servicioExonerado
-                        # totalServExonerado += linea.price_subtotal
+                        totalServExonerado += base_exonerada
+                        totalServiciosGravados += base_gravada
                     elif es_mercancia:
-                        mercanciaExonerada = linea.price_unit * linea.quantity
-                        totalMercExonerada += mercanciaExonerada
-                        # totalMercExonerada += linea.price_subtotal
+                        totalMercExonerada += base_exonerada
+                        totalMercanciasGravadas += base_gravada
                 elif es_gravado:
                     if es_servicio:
                         serviciosGravados = linea.price_unit * linea.quantity
@@ -2793,8 +2816,12 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                     ResumenFactura.append(TotalDesgloseImpuesto)
 
             TotalImpuesto = etree.Element("TotalImpuesto")
-            # TotalImpuesto.text = str(round(invoice.amount_tax, decimales))
-            TotalImpuesto.text = str(round(totalImpuesto, decimales))
+            # TotalImpuesto debe coincidir con la suma de TotalDesgloseImpuesto
+            # Para el caso con exoneración, debe ser el impuesto neto cobrado
+            total_impuesto_a_reportar = impuesto_cobrado
+            for invoice_tax_line in tax_line_ids:
+                total_impuesto_a_reportar += invoice_tax_line.amount
+            TotalImpuesto.text = str(round(total_impuesto_a_reportar, decimales))
             ResumenFactura.append(TotalImpuesto)
 
             TotalImpAsumEmisorFabrica = etree.Element("TotalImpAsumEmisorFabrica")
