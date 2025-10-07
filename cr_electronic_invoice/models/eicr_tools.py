@@ -3242,10 +3242,23 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
 
         # Invoice lines (v4.4: CodigoCABYS, new fields)
         for linea in lineas:
-            cantidad = linea.find("Cantidad").text
-            precio_unitario = linea.find("PrecioUnitario").text
+            # Parse cantidad to handle comma decimal separators (e.g., "1,5" -> 1.5)
+            cantidad_text = linea.find("Cantidad").text
+            cantidad = float(cantidad_text.replace(",", ".")) if cantidad_text else 0.0
+
+            # Parse precio_unitario to handle comma decimal separators
+            precio_unitario_text = linea.find("PrecioUnitario").text
+            precio_unitario = (
+                float(precio_unitario_text.replace(",", "."))
+                if precio_unitario_text
+                else 0.0
+            )
+
             descripcion = linea.find("Detalle").text
-            total = linea.find("MontoTotal").text
+
+            # Parse total to handle comma decimal separators
+            total_text = linea.find("MontoTotal").text
+            total = float(total_text.replace(",", ".")) if total_text else 0.0
             codigo_cabys = (
                 linea.find("CodigoCABYS").text if linea.find("CodigoCABYS") is not None else ""
             )
@@ -3257,8 +3270,13 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             descuento = linea.find("Descuento")
             porcentaje_descuento = 0.0
             if descuento is not None and descuento.find("MontoDescuento") is not None:
-                monto_descuento = float(descuento.find("MontoDescuento").text)
-                porcentaje_descuento = monto_descuento * 100 / float(total) if float(total) else 0.0
+                monto_descuento_text = descuento.find("MontoDescuento").text
+                monto_descuento = (
+                    float(monto_descuento_text.replace(",", "."))
+                    if monto_descuento_text
+                    else 0.0
+                )
+                porcentaje_descuento = monto_descuento * 100 / total if total else 0.0
             # Taxes (Impuesto)
             impuestos = linea.findall("Impuesto")
             taxes = self.env["account.tax"]
@@ -3309,7 +3327,12 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
         # OtrosCargos
         for cargo in otros_cargos:
             detalle = cargo.find("Detalle").text if cargo.find("Detalle") is not None else ""
-            monto = cargo.find("MontoCargo").text if cargo.find("MontoCargo") is not None else "0.0"
+            monto_text = (
+                cargo.find("MontoCargo").text
+                if cargo.find("MontoCargo") is not None
+                else "0.0"
+            )
+            monto = float(monto_text.replace(",", ".")) if monto_text else 0.0
             vals = {
                 "quantity": 1,
                 "price_unit": monto,
@@ -3718,27 +3741,110 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
 
     @api.model
     def actualizar_info(self, partner_id):
-        _logger.info("selff %s name %s" % (partner_id, partner_id.name))
+        _logger.info(
+            "Updating partner info for %s (ID: %s)" % (partner_id.name, partner_id.id)
+        )
         info = self.env["eicr.hacienda"].get_info_contribuyente(partner_id.vat)
         if info:
+            _logger.info("API response received for VAT %s" % partner_id.vat)
+
             # tipo de identificación
-            partner_id.identification_id = self.env["identification.type"].search(
-                [("code", "=", info["tipoIdentificacion"])]
-            )
-            if info["tipoIdentificacion"] in ("01", "03", "04"):
-                partner_id.is_company = False
-            elif info["tipoIdentificacion"] in ("02"):
-                partner_id.is_company = True
-            # actividad económica
-            actividades = [a["codigo"] for a in info["actividades"] if a["estado"] == "A"]
-            partner_id.eicr_activity_ids = self.env["economic_activity"].search(
-                [("code", "in", actividades)]
-            )
+            if "tipoIdentificacion" in info:
+                partner_id.identification_id = self.env["identification.type"].search(
+                    [("code", "=", info["tipoIdentificacion"])]
+                )
+                if info["tipoIdentificacion"] in ("01", "03", "04"):
+                    partner_id.is_company = False
+                elif info["tipoIdentificacion"] in ("02"):
+                    partner_id.is_company = True
+                _logger.info("Set identification type: %s" % info["tipoIdentificacion"])
+
+            # actividad económica - Updated for new API format (CIIU4 only)
+            if "actividades" in info and info["actividades"]:
+                ciiu4_codes = []
+
+                for actividad in info["actividades"]:
+                    if actividad.get("estado") == "A":  # Only active activities
+                        # Only add CIIU4 code (main codigo) - ignore CIIU3 for backwards compatibility
+                        ciiu4_code = actividad.get("codigo")
+                        if ciiu4_code:
+                            ciiu4_codes.append(ciiu4_code)
+                            _logger.info(
+                                "Found CIIU4 activity: %s - %s"
+                                % (ciiu4_code, actividad.get("descripcion", ""))
+                            )
+
+                # Remove duplicates and search for CIIU4 economic activities only
+                unique_ciiu4_codes = list(set(ciiu4_codes))
+                _logger.info(
+                    "Searching for CIIU4 economic activities with codes: %s"
+                    % unique_ciiu4_codes
+                )
+
+                found_activities = self.env["economic_activity"].search(
+                    [
+                        ("code", "in", unique_ciiu4_codes),
+                        ("tipo", "=", "ciiu4"),  # Only CIIU4 activities
+                    ]
+                )
+
+                # Replace all existing activities with only CIIU4 ones from API
+                partner_id.eicr_activity_ids = found_activities
+                _logger.info(
+                    "Replaced with %d CIIU4 economic activities in system"
+                    % len(found_activities)
+                )
+
+                # Log any CIIU4 codes that weren't found
+                found_codes = found_activities.mapped("code")
+                missing_codes = [
+                    code for code in unique_ciiu4_codes if code not in found_codes
+                ]
+                if missing_codes:
+                    _logger.warning(
+                        "CIIU4 economic activity codes not found in system: %s"
+                        % missing_codes
+                    )
+            else:
+                _logger.warning("No activities found in API response")
+
             # nombre
-            if partner_id.name in ("", "My Company", None, False):
+            if "nombre" in info and partner_id.name in ("", "My Company", None, False):
                 partner_id.name = info["nombre"]
+                _logger.info("Updated partner name to: %s" % info["nombre"])
+
             # régimen tributario
-            partner_id.eicr_regimen = str(info["regimen"]["codigo"])
+            if (
+                "regimen" in info
+                and isinstance(info["regimen"], dict)
+                and "codigo" in info["regimen"]
+            ):
+                partner_id.eicr_regimen = str(info["regimen"]["codigo"])
+                _logger.info(
+                    "Set tax regime: %s - %s"
+                    % (
+                        info["regimen"]["codigo"],
+                        info["regimen"].get("descripcion", ""),
+                    )
+                )
+
+            # Log additional information if available
+            if "situacion" in info:
+                situacion = info["situacion"]
+                _logger.info(
+                    "Tax situation - Estado: %s, Moroso: %s, Omiso: %s"
+                    % (
+                        situacion.get("estado", "N/A"),
+                        situacion.get("moroso", "N/A"),
+                        situacion.get("omiso", "N/A"),
+                    )
+                )
+                if "mensaje" in situacion:
+                    _logger.warning("Tax situation message: %s" % situacion["mensaje"])
+        else:
+            _logger.warning(
+                "No information received from API for VAT: %s" % partner_id.vat
+            )
 
     def _get_partner_from_xml(self, xml_encoded, customer=False, supplier=True):
         xml = etree.fromstring(base64.b64decode(xml_encoded))

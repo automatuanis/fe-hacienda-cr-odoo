@@ -27,7 +27,9 @@ class ResPartner(models.Model):
     identification_id = fields.Many2one(comodel_name="identification.type", string="Tipo de identificacion")
     payment_methods_id = fields.Many2one(comodel_name="payment.methods", string="Métodos de Pago")
 
-    eicr_activity_ids = fields.Many2many('economic_activity', string='Actividades Económicas')
+    eicr_activity_ids = fields.Many2many('economic_activity', 'economic_activity_res_partner_rel',
+                                         'res_partner_id', 'economic_activity_id', 
+                                         string='Actividades Económicas')
     eicr_regimen = fields.Selection(REGIMENES, 'Régimen Tributario', default='0')
 
     email_facturas = fields.Char()

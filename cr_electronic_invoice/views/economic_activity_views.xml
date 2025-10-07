@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+	<data>
+
+		<record id="view_economic_activity_tree" model="ir.ui.view">
+            <field name="name">economic_activity.tree</field>
+            <field name="model">economic_activity</field>
+            <field name="arch" type="xml">
+                <tree string="Actividades Económicas">
+                    <field name="active"/>
+                    <field name="code"/>
+                    <field name="name"/>
+                    <field name="tipo"/>
+                    <field name="partner_ids" string="Contactos" widget="many2many_tags"/>
+                </tree>
+            </field>
+        </record>
+
+		<record id="view_economic_activity_form" model="ir.ui.view">
+            <field name="name">economic_activity.form</field>
+            <field name="model">economic_activity</field>
+            <field name="arch" type="xml">
+                <form string="Actividad Económica">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="active"/>
+                                <field name="code"/>
+                                <field name="name"/>
+                            </group>
+                            <group>
+                                <field name="tipo"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="description"/>
+                        </group>
+                        <notebook>
+                            <page string="Contactos Asociados">
+                                <field name="partner_ids">
+                                    <tree>
+                                        <field name="name"/>
+                                        <field name="vat"/>
+                                        <field name="email"/>
+                                        <field name="phone"/>
+                                        <field name="is_company"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+		<record id="view_economic_activity_search" model="ir.ui.view">
+            <field name="name">economic_activity.search</field>
+            <field name="model">economic_activity</field>
+            <field name="arch" type="xml">
+                <search string="Buscar Actividades Económicas">
+                    <field name="code"/>
+                    <field name="name"/>
+                    <field name="tipo"/>
+                    <separator/>
+                    <filter string="Con Contactos Asignados" name="with_partners" domain="[('partner_ids', '!=', False)]"/>
+                    <filter string="Sin Contactos" name="without_partners" domain="[('partner_ids', '=', False)]"/>
+                    <separator/>
+                    <filter string="CIIU3" name="ciiu3" domain="[('tipo', '=', 'ciiu3')]"/>
+                    <filter string="CIIU4" name="ciiu4" domain="[('tipo', '=', 'ciiu4')]"/>
+                    <filter string="RUT" name="rut" domain="[('tipo', '=', 'rut')]"/>
+                    <separator/>
+                    <filter string="Activos" name="active" domain="[('active', '=', True)]"/>
+                    <group expand="0" string="Agrupar Por">
+                        <filter string="Tipo" name="group_by_tipo" context="{'group_by': 'tipo'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+		<record id="economic_activity_action" model="ir.actions.act_window">
+			<field name="name">Actividades Económicas</field>
+			<field name="res_model">economic_activity</field>
+			<field name="view_type">form</field>
+			<field name="view_mode">tree,form</field>
+			<field name="search_view_id" ref="view_economic_activity_search"/>
+			<field name="context">{'search_default_with_partners': 1}</field>
+		</record>
+
+		<menuitem id="menu_economic_activity" name="Actividades Económicas" parent="account.menu_finance_entries_actions" sequence="71" action="economic_activity_action"/>
+		
+	</data>
+</odoo>

@@ -50,6 +50,7 @@
 		'views/product_category_views.xml',
 		'views/res_partner.xml',
 		'views/ir_sequence_view.xml',
+		'views/economic_activity_views.xml',
 		'views/eicr_exoneration_type_views.xml',
 		'views/eicr_exoneration_views.xml',
 		'views/eicr_extra_node_views.xml',
