@@ -411,8 +411,15 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
         # MensajeReceptor 4.3
 
         documento = "MensajeReceptor"  # MensajeReceptor
-        xmlns = "https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.3/mensajeReceptor"
-        schemaLocation = "https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.3/mensajeReceptor  https://www.hacienda.go.cr/ATV/ComprobanteElectronico/docs/esquemas/2016/v4.3/MensajeReceptor_V4.3.xsd"
+
+        if object.company_id.eicr_version_id.name == "v4.3":
+            xmlns = "https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.3/mensajeReceptor"
+            schemaLocation = "https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.3/mensajeReceptor  https://www.hacienda.go.cr/ATV/ComprobanteElectronico/docs/esquemas/2016/v4.3/MensajeReceptor_V4.3.xsd"
+        elif object.company_id.eicr_version_id.name == "v4.4":
+            xmlns = "https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.4/mensajeReceptor"
+            schemaLocation = "https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.4/mensajeReceptor  https://www.hacienda.go.cr/ATV/ComprobanteElectronico/docs/esquemas/2016/v4.4/MensajeReceptor_V4.4.xsd"
+        else:
+            raise UserError("La versión de facturación electrónica no es válida.")
 
         xsi = "http://www.w3.org/2001/XMLSchema-instance"
         xsd = "http://www.w3.org/2001/XMLSchema"
