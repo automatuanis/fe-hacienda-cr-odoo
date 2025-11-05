@@ -9,9 +9,10 @@
                     <field name="keep_clave"/>
                     <field name="keep_date"/>
                     <field name="new_date" attrs="{'invisible': [('keep_date', '=', True)], 'required': [('keep_date', '=', False)]}"/>
-                    <field name="eicr_mensaje_hacienda"/>
-                    <field name="eicr_date"/>
-                    <field name="number_electronic"/>
+                    <separator string="Valores Actuales" colspan="2"/>
+                    <field name="eicr_mensaje_hacienda" readonly="1"/>
+                    <field name="eicr_date" readonly="1"/>
+                    <field name="eicr_clave" readonly="1"/>
                 </group>
                 <footer>
                     <button name="action_remake_xml_confirm" string="Regenerar" type="object" class="btn-primary"/>

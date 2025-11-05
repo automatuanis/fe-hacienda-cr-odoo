@@ -56,6 +56,21 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             print("Error con % %" % (xml, e))
             return False
 
+    def get_sequence(self, object):
+        if object._name == "account.invoice":
+            return object.journal_id.sequence_id
+        elif object._name == "pos.order":
+            return object.config_id.sequence_id
+        elif object._name == "hr.expense":
+            diario = self.env["account.journal"].search(
+                [("company_id", "=", object.company_id.id), ("type", "=", "purchase")]
+            )
+            if len(diario) > 1:
+                diario = diario.sorted(key=lambda i: i.id)[0]
+            return diario.sequence_id
+        else:
+            return False
+
     def _get_consecutivo(self, object):
         # tipo de documento
         if object._name == "account.invoice":
