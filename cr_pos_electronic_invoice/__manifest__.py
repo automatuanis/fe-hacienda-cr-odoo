@@ -13,6 +13,7 @@
     ],
     "data": [
         "data/data.xml",
+        "wizard/pos_order_remake_xml_wizard.xml",
         "views/pos_templates.xml",
         "views/pos_views.xml",
     ],

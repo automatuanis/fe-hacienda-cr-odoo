@@ -93,3 +93,18 @@ class PosOrder(models.Model):
             pos_order.state_tributacion = 'pendiente'
 
         return pos_order
+
+    @api.multi
+    def action_remake_xml(self):
+        """Open wizard to regenerate XML for rejected electronic invoices"""
+        self.ensure_one()
+        return {
+            'name': 'Regenerar XML',
+            'type': 'ir.actions.act_window',
+            'view_mode': 'form',
+            'res_model': 'pos.order.remake_xml',
+            'target': 'new',
+            'context': {
+                'default_order_id': self.id,
+            }
+        }

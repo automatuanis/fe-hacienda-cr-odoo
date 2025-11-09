@@ -1,0 +1,25 @@
+<odoo>
+    <record id="pos_order_remake_xml_view_wizard_form" model="ir.ui.view">
+        <field name="name">pos.order.remake_xml.form</field>
+        <field name="model">pos.order.remake_xml</field>
+        <field name="arch" type="xml">
+            <form string="Regenerar XML">
+                <group>
+                    <field name="order_id" invisible="1"/>
+                    <field name="keep_clave"/>
+                    <field name="keep_date"/>
+                    <field name="new_date" attrs="{'invisible': [('keep_date', '=', True)], 'required': [('keep_date', '=', False)]}"/>
+                    <separator string="Valores Actuales" colspan="2"/>
+                    <field name="eicr_consecutivo" readonly="1"/>
+                    <field name="eicr_mensaje_hacienda" readonly="1"/>
+                    <field name="eicr_date" readonly="1"/>
+                    <field name="eicr_clave" readonly="1"/>
+                </group>
+                <footer>
+                    <button name="action_remake_xml_confirm" string="Regenerar" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
