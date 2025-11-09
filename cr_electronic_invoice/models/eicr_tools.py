@@ -3024,8 +3024,8 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             es_mercancia = not es_servicio
             
             # Clasificamos:
-            # No Sujeto: No IVA -> no_sujeto
-            # Exento: IVA == 0 -> exento
+            # No Sujeto: No IVA o IVA == 0 -> no_sujeto
+            # Exento: IVA configurado con tarifa exenta (iva_tax_code == "10")
             # Gravado: IVA > 0 -> grabado
             # Exonerado: IVA > 0 + deducción (IVA < 0) -> exonerado
 
@@ -3039,16 +3039,25 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             if linea_iva_exoneracion and not linea.exoneration_id:
                 raise UserError("El producto %s debe tener una exoneración asociada" % linea.name[:200])
 
-            if  len(linea_iva) == 0:
-                # No Sujeto: No IVA
+            # Determinar si tiene IVA configurado
+            tiene_iva_configurado = len(linea_iva) > 0
+            
+            if not tiene_iva_configurado:
+                # No Sujeto: Sin IVA configurado
                 es_no_sujeto = True
                 es_exento = False
                 es_gravado = False
                 es_exonerado = False
-            elif linea_iva.amount == 0:
-                # Exento: IVA == 0
+            elif linea_iva.iva_tax_code == "10":
+                # Exento: Tarifa Exenta específica (código 10)
                 es_no_sujeto = False
                 es_exento = True
+                es_gravado = False
+                es_exonerado = False
+            elif linea_iva.amount == 0:
+                # No Sujeto: IVA configurado al 0% (código 01)
+                es_no_sujeto = True
+                es_exento = False
                 es_gravado = False
                 es_exonerado = False
             elif linea_iva.amount > 0:
@@ -3061,6 +3070,12 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                     es_exonerado = True                    
                 else:
                     es_exonerado = False
+            else:
+                # Caso no esperado
+                es_no_sujeto = False
+                es_exento = False
+                es_gravado = False
+                es_exonerado = False
 
             # Porcentaje de exoneración sobre la tarifa (solo aplica si es_exonerado True)
             ratio_exoneracion = 0.0
@@ -3139,15 +3154,11 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                 )
                 
                 if es_no_sujeto:
+                    # Incluye productos sin IVA y productos con IVA al 0%
                     if es_servicio:
                         totalDescuentosServiciosNoSujeto += montoDescuento
                     elif es_mercancia:
                         totalDescuentosMercanciasNoSujeta += montoDescuento
-                elif es_exento:
-                    if es_servicio:
-                        totalDescuentosServiciosExentos += montoDescuento
-                    elif es_mercancia:
-                        totalDescuentosMercanciasExentas += montoDescuento
                 elif es_exonerado:
                     # Se reparte el descuento proporcionalmente entre la parte exonerada y la parte gravada
                     descuento_exonerado = round(montoDescuento * ratio_exoneracion, decimales)
@@ -3195,7 +3206,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             monto_iva = 0.0
             monto_exonerado = 0.0
             
-            # v4.4: ALWAYS include Impuesto element, even if no tax (use 0% IVA)
+            # Acumular totales según clasificación para ResumenFactura
             if es_no_sujeto:
                 # No tax found, but v4.4 requires Impuesto element
                 # Add 0% IVA as "No Sujeto"
@@ -3222,7 +3233,14 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                     totalServNoSujeto += linea.price_subtotal
                 elif es_mercancia:
                     totalMercNoSujeta += linea.price_subtotal
-            else:
+            elif es_exento:
+                if es_servicio:
+                    totalServiciosExentos += linea.price_subtotal
+                elif es_mercancia:
+                    totalMercanciasExentas += linea.price_subtotal
+            
+            # Incluir elemento <Impuesto> si hay IVA configurado (incluso si amount == 0)
+            if tiene_iva_configurado:
                 Impuesto = etree.Element("Impuesto")
                 
                 Codigo = etree.Element("Codigo")
@@ -3287,16 +3305,10 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                     Exoneracion.append(MontoExoneracion)
                     Impuesto.append(Exoneracion)
                 
-                if es_exento:
-                    if es_servicio:
-                        servicioNoSujeto = linea.price_unit * linea.quantity
-                        totalServiciosExentos += servicioNoSujeto
-                        # totalServNoSujeto += linea.price_subtotal
-                    elif es_mercancia:
-                        mercanciaNoSujeta = linea.price_unit * linea.quantity
-                        totalMercNoSujeta += mercanciaNoSujeta
-                        # totalMercNoSujeta += linea.price_subtotal
-                elif es_exonerado:
+                LineaDetalle.append(Impuesto)
+                
+                # Nota: es_exento ya no se usa en v4.4, productos con IVA 0% son es_no_sujeto
+                if es_exonerado:
                     # Se reparte la base imponible entre Gravado y Exonerado según porcentaje de exoneración de la tarifa
                     base_linea = linea.price_unit * linea.quantity
                     base_exonerada = round(base_linea * ratio_exoneracion, decimales)
@@ -3316,19 +3328,17 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                         mercanciasGravadas = linea.price_unit * linea.quantity
                         totalMercanciasGravadas += mercanciasGravadas
                         # totalMercanciasGravadas += linea.price_subtotal
-            
-            # v4.4: Always append Impuesto and add ImpuestoAsumidoEmisorFabrica/ImpuestoNeto
-            LineaDetalle.append(Impuesto)
-            
-            impuesto_neto = monto_iva + monto_exonerado
-            
-            ImpuestoAsumidoEmisorFabrica = etree.Element("ImpuestoAsumidoEmisorFabrica")
-            ImpuestoAsumidoEmisorFabrica.text = "0"
-            LineaDetalle.append(ImpuestoAsumidoEmisorFabrica)
-            
-            ImpuestoNeto = etree.Element("ImpuestoNeto")
-            ImpuestoNeto.text = str(round(impuesto_neto, decimales))
-            LineaDetalle.append(ImpuestoNeto)
+
+                # ImpuestoAsumidoEmisorFabrica e ImpuestoNeto solo se incluyen cuando hay Impuesto
+                impuesto_neto = monto_iva + monto_exonerado
+                
+                ImpuestoAsumidoEmisorFabrica = etree.Element("ImpuestoAsumidoEmisorFabrica")
+                ImpuestoAsumidoEmisorFabrica.text = "0"
+                LineaDetalle.append(ImpuestoAsumidoEmisorFabrica)
+                
+                ImpuestoNeto = etree.Element("ImpuestoNeto")
+                ImpuestoNeto.text = str(round(impuesto_neto, decimales))
+                LineaDetalle.append(ImpuestoNeto)
             
             ivaDevuelto = abs(
                 sum(
