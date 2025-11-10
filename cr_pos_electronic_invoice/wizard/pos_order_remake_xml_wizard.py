@@ -57,17 +57,18 @@ class PosOrderRemakeXMLWizard(models.TransientModel):
 
         # Handle clave regeneration
         if not self.keep_clave:
-            sequence_id = self.env["eicr.tools"].get_sequence(self.order_id)
-            if not sequence_id:
-                raise UserError(
-                    _(
-                        "No se ha configurado una secuencia para la orden POS. Por favor, configure una secuencia en la configuración del punto de venta."
-                    )
-                )
-            new_consecutivo = sequence_id.next_by_id()
-            self.order_id.name = new_consecutivo
-            _logger.info("Consecutivo %s -> %s" % (old_consecutivo, new_consecutivo))
-            changes.append("Consecutivo: %s → %s" % (old_consecutivo, new_consecutivo))
+            # sequence_id = self.env["eicr.tools"].get_sequence(self.order_id)
+            # if not sequence_id:
+            #     raise UserError(
+            #         _(
+            #             "No se ha configurado una secuencia para la orden POS. Por favor, configure una secuencia en la configuración del punto de venta."
+            #         )
+            #     )
+            # new_consecutivo = sequence_id.next_by_id()
+            # self.order_id.name = new_consecutivo
+            self.order_id.number_electronic = None
+            # _logger.info("Consecutivo %s -> %s" % (old_consecutivo, new_consecutivo))
+            # changes.append("Consecutivo: %s → %s" % (old_consecutivo, new_consecutivo))
 
         # Clear existing XML to force regeneration
         self.order_id.xml_comprobante = False
@@ -96,10 +97,12 @@ class PosOrderRemakeXMLWizard(models.TransientModel):
                 for change in changes:
                     mensaje += "<li>%s</li>" % change
                 mensaje += "</ul>"
+                
+                _logger.info(mensaje)
 
-                self.order_id.message_post(
-                    body=mensaje, subtype="mail.mt_note", message_type="comment"
-                )
+                # self.order_id.message_post(
+                #     body=mensaje, subtype="mail.mt_note", message_type="comment"
+                # )
 
             _logger.info("XML regenerado exitosamente para orden %s" % self.order_id.id)
         else:
