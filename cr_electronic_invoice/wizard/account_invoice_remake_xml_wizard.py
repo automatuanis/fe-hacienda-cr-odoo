@@ -57,7 +57,7 @@ class EICRRemakeXMLWizard(models.TransientModel):
                     )
                 )
             new_consecutivo = sequence_id.next_by_id()
-            self.number = new_consecutivo
+            self.invoice_id.number = new_consecutivo
             _logger.info("Consecutivo %s -> %s" % (old_consecutivo, new_consecutivo))
 
         self.invoice_id.xml_comprobante = False
