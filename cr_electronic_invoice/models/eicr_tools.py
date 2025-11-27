@@ -3411,42 +3411,40 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             
             # Acumular totales según clasificación para ResumenFactura
             if es_no_sujeto:
-                # No tax found, but v4.4 requires Impuesto element
-                # Add 0% IVA as "No Sujeto"
-                Impuesto = etree.Element("Impuesto")
-                
-                Codigo = etree.Element("Codigo")
-                Codigo.text = "01"  # IVA
-                Impuesto.append(Codigo)
-                
-                CodigoTarifaIVA = etree.Element("CodigoTarifaIVA")
-                CodigoTarifaIVA.text = "01"  # Code 01 = 0% (No Sujeto/Exento)
-                Impuesto.append(CodigoTarifaIVA)
-                
-                Tarifa = etree.Element("Tarifa")
-                Tarifa.text = "0.0"
-                Impuesto.append(Tarifa)
-                
-                Monto = etree.Element("Monto")
-                Monto.text = "0.0"
-                Impuesto.append(Monto)
-                
-                LineaDetalle.append(Impuesto)
-                
-                # v4.4: ImpuestoAsumidoEmisorFabrica e ImpuestoNeto son obligatorios cuando hay Impuesto
-                ImpuestoAsumidoEmisorFabrica = etree.Element("ImpuestoAsumidoEmisorFabrica")
-                ImpuestoAsumidoEmisorFabrica.text = "0"
-                LineaDetalle.append(ImpuestoAsumidoEmisorFabrica)
-                
-                ImpuestoNeto = etree.Element("ImpuestoNeto")
-                ImpuestoNeto.text = "0.0"
-                LineaDetalle.append(ImpuestoNeto)
-                
-                # Still classify as No Sujeto for totals
                 if es_servicio:
                     totalServNoSujeto += linea.price_subtotal
                 elif es_mercancia:
                     totalMercNoSujeta += linea.price_subtotal
+
+                if not tiene_iva_configurado:
+                    # Sin impuestos configurados: agregar bloque obligatorio de IVA 0%
+                    Impuesto = etree.Element("Impuesto")
+
+                    Codigo = etree.Element("Codigo")
+                    Codigo.text = "01"  # IVA
+                    Impuesto.append(Codigo)
+
+                    CodigoTarifaIVA = etree.Element("CodigoTarifaIVA")
+                    CodigoTarifaIVA.text = "01"  # 0%
+                    Impuesto.append(CodigoTarifaIVA)
+
+                    Tarifa = etree.Element("Tarifa")
+                    Tarifa.text = "0.0"
+                    Impuesto.append(Tarifa)
+
+                    Monto = etree.Element("Monto")
+                    Monto.text = "0.0"
+                    Impuesto.append(Monto)
+
+                    LineaDetalle.append(Impuesto)
+
+                    ImpuestoAsumidoEmisorFabrica = etree.Element("ImpuestoAsumidoEmisorFabrica")
+                    ImpuestoAsumidoEmisorFabrica.text = "0"
+                    LineaDetalle.append(ImpuestoAsumidoEmisorFabrica)
+
+                    ImpuestoNeto = etree.Element("ImpuestoNeto")
+                    ImpuestoNeto.text = "0.0"
+                    LineaDetalle.append(ImpuestoNeto)
             elif es_exento:
                 if es_servicio:
                     totalServiciosExentos += linea.price_subtotal
