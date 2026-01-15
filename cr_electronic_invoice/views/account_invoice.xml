@@ -185,5 +185,19 @@
 			</field>
 		</record>
 
+		<!-- Server action for multi-invoice remake XML from list view -->
+		<record id="action_remake_xml_multi" model="ir.actions.server">
+			<field name="name">Regenerar XML</field>
+			<field name="model_id" ref="account.model_account_invoice"/>
+			<field name="binding_model_id" ref="account.model_account_invoice"/>
+			<field name="binding_view_types">list</field>
+			<field name="state">code</field>
+			<field name="code">
+if records:
+	action = records.action_remake_xml()
+	action = action
+			</field>
+		</record>
+
 	</data>
 </odoo>
