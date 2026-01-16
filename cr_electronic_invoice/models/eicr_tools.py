@@ -2954,6 +2954,14 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
 
         # CodigoActividadEmisor
         CodigoActividadEmisor = etree.Element("CodigoActividadEmisor")
+        if not invoice.company_id.eicr_activity_ids:
+            raise UserError(
+                _(
+                    "The company '%s' has no economic activities configured. "
+                    "Please configure at least one economic activity before issuing electronic invoices."
+                )
+                % (invoice.company_id.name or "")
+            )
         CodigoActividadEmisor.text = invoice.company_id.eicr_activity_ids[0].code
         Documento.append(CodigoActividadEmisor)
 
