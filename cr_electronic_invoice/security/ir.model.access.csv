@@ -19,3 +19,6 @@ edit_eicr_exoneration,eicr.exoneration,model_eicr_exoneration,account.group_acco
 
 access_eicr_extra_node,eicr.extra_node,model_eicr_extra_node,base.group_user,1,0,0,0
 edit_eicr_extra_node,eicr.extra_node,model_eicr_extra_node,account.group_account_manager,1,1,1,1
+
+access_res_partner_update_info_wizard,res.partner.update.info.wizard,model_res_partner_update_info_wizard,base.group_user,1,1,1,1
+access_res_partner_update_info_line,res.partner.update.info.line,model_res_partner_update_info_line,base.group_user,1,1,1,1

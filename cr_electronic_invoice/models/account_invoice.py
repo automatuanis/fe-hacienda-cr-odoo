@@ -332,6 +332,26 @@ class AccountInvoiceElectronic(models.Model):
     @api.multi
     def action_invoice_open(self):
         _logger.info("%s of type %s" % (self, self.type))
+
+        # Update partner tax information from Hacienda API
+        for invoice in self:
+            if invoice.partner_id and invoice.partner_id.vat:
+                try:
+                    invoice.partner_id.action_update_info()
+                    _logger.info(
+                        "Updated partner info for %s [%s] on invoice %s"
+                        % (
+                            invoice.partner_id.name,
+                            invoice.partner_id.vat,
+                            invoice.number or invoice.id,
+                        )
+                    )
+                except Exception as e:
+                    _logger.warning(
+                        "Could not update partner info for %s on invoice %s: %s"
+                        % (invoice.partner_id.name, invoice.number or invoice.id, str(e))
+                    )
+
         for invoice in self:
             if invoice.state in ("open", "paid"):
                 raise UserError(_("Esta factura ya fue validad."))

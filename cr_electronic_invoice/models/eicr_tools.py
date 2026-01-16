@@ -80,7 +80,10 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             tipo = "05"
             if object.type == "out_invoice":
                 tipo = "01"  # Factura Electrónica
-                if object.company_id.eicr_version_id.name in ("v4.3", "v4.4") and not receptor_valido:
+                if (
+                    object.company_id.eicr_version_id.name in ("v4.3", "v4.4")
+                    and not receptor_valido
+                ):
                     tipo = "04"  # Tiquete Electrónico
             elif object.type == "out_refund" and object.amount_total_signed > 0:
                 tipo = "02"  # Nota Débito
@@ -1455,10 +1458,9 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
         totalExonerado = round(0.00, decimales)
 
         # El cargo de servicio de mesa se aplica al total de la factura
-        servicio_de_mesa_tax = self.env["account.tax"].search([
-            ("tax_code", "=", "service"),
-            ("company_id", "=", order.company_id.id)
-        ])
+        servicio_de_mesa_tax = self.env["account.tax"].search(
+            [("tax_code", "=", "service"), ("company_id", "=", order.company_id.id)]
+        )
         # Check if any line has the table service tax
         es_servicio_de_mesa = False
         for linea in order.lines:
@@ -1474,17 +1476,31 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
 
             # Classify line: No Sujeto, Exento, Gravado, Exonerado
             # Using same logic as _get_xml_FE_NC_ND_44
-            linea_iva = linea.tax_ids_after_fiscal_position.filtered(
-                lambda tax_id: tax_id.tax_code == "01" and tax_id.amount >= 0 and not tax_id.has_exoneration
-            ) - servicio_de_mesa_tax
-            linea_iva_exoneracion = linea.tax_ids_after_fiscal_position.filtered(
-                lambda tax_id: tax_id.amount < 0 and tax_id.has_exoneration
-            ) - servicio_de_mesa_tax
+            linea_iva = (
+                linea.tax_ids_after_fiscal_position.filtered(
+                    lambda tax_id: tax_id.tax_code == "01"
+                    and tax_id.amount >= 0
+                    and not tax_id.has_exoneration
+                )
+                - servicio_de_mesa_tax
+            )
+            linea_iva_exoneracion = (
+                linea.tax_ids_after_fiscal_position.filtered(
+                    lambda tax_id: tax_id.amount < 0 and tax_id.has_exoneration
+                )
+                - servicio_de_mesa_tax
+            )
 
             if len(linea_iva) > 1:
-                raise UserError("El producto %s solo debe tener una entrada de IVA asociada" % linea.product_id.product_tmpl_id.name[:200])
+                raise UserError(
+                    "El producto %s solo debe tener una entrada de IVA asociada"
+                    % linea.product_id.product_tmpl_id.name[:200]
+                )
             if len(linea_iva_exoneracion) > 1:
-                raise UserError("El producto %s solo debe tener una entrada de IVA exonerada asociada" % linea.product_id.product_tmpl_id.name[:200])
+                raise UserError(
+                    "El producto %s solo debe tener una entrada de IVA exonerada asociada"
+                    % linea.product_id.product_tmpl_id.name[:200]
+                )
 
             # Determinar si tiene IVA configurado
             tiene_iva_configurado = len(linea_iva) > 0
@@ -1528,7 +1544,9 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             ratio_exoneracion = 0.0
             if es_exonerado and linea_iva and linea_iva_exoneracion:
                 try:
-                    ratio_exoneracion = abs(linea_iva_exoneracion.amount) / (linea_iva.amount or 1.0)
+                    ratio_exoneracion = abs(linea_iva_exoneracion.amount) / (
+                        linea_iva.amount or 1.0
+                    )
                 except Exception:
                     ratio_exoneracion = 0.0
                 if ratio_exoneracion < 0:
@@ -1656,34 +1674,34 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                 # No tax found, but v4.4 requires Impuesto element
                 # Add 0% IVA as "No Sujeto"
                 Impuesto = etree.Element("Impuesto")
-                
+
                 Codigo = etree.Element("Codigo")
                 Codigo.text = "01"  # IVA
                 Impuesto.append(Codigo)
-                
+
                 CodigoTarifaIVA = etree.Element("CodigoTarifaIVA")
                 CodigoTarifaIVA.text = "01"  # Code 01 = 0% (No Sujeto/Exento)
                 Impuesto.append(CodigoTarifaIVA)
-                
+
                 Tarifa = etree.Element("Tarifa")
                 Tarifa.text = "0.0"
                 Impuesto.append(Tarifa)
-                
+
                 Monto = etree.Element("Monto")
                 Monto.text = "0.0"
                 Impuesto.append(Monto)
-                
+
                 LineaDetalle.append(Impuesto)
-                
+
                 # v4.4: ImpuestoAsumidoEmisorFabrica e ImpuestoNeto son obligatorios cuando hay Impuesto
                 ImpuestoAsumidoEmisorFabrica = etree.Element("ImpuestoAsumidoEmisorFabrica")
                 ImpuestoAsumidoEmisorFabrica.text = "0"
                 LineaDetalle.append(ImpuestoAsumidoEmisorFabrica)
-                
+
                 ImpuestoNeto = etree.Element("ImpuestoNeto")
                 ImpuestoNeto.text = "0.0"
                 LineaDetalle.append(ImpuestoNeto)
-                
+
                 # Still classify as No Sujeto for totals
                 if es_servicio:
                     totalServNoSujeto += linea.price_subtotal
@@ -1700,34 +1718,36 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             # Incluir elemento <Impuesto> si hay IVA configurado (incluso si amount == 0)
             if tiene_iva_configurado:
                 Impuesto = etree.Element("Impuesto")
-                
+
                 Codigo = etree.Element("Codigo")
                 Codigo.text = linea_iva.tax_code
                 Impuesto.append(Codigo)
-                
+
                 CodigoTarifaIVA = etree.Element("CodigoTarifaIVA")
                 CodigoTarifaIVA.text = linea_iva.iva_tax_code
                 Impuesto.append(CodigoTarifaIVA)
-                
+
                 Tarifa = etree.Element("Tarifa")
                 Tarifa.text = str(round(linea_iva.amount, decimales))
                 Impuesto.append(Tarifa)
-                
+
                 monto_iva = round(linea.price_subtotal * linea_iva.amount / 100.00, decimales)
                 monto_impuesto_linea += monto_iva
-                
+
                 Monto = etree.Element("Monto")
                 Monto.text = str(round(monto_iva, decimales))
                 Impuesto.append(Monto)
-                
+
                 if es_exonerado:
-                    monto_exonerado = round(linea.price_subtotal * linea_iva_exoneracion.amount / 100.00, decimales)
+                    monto_exonerado = round(
+                        linea.price_subtotal * linea_iva_exoneracion.amount / 100.00, decimales
+                    )
                     monto_exonerado_linea += monto_exonerado
                     Exoneracion = etree.Element("Exoneracion")
 
                     # Note: POS orders might not have exoneration_id field
                     # This is kept for compatibility but may need to be checked
-                    if hasattr(linea, 'exoneration_id') and linea.exoneration_id:
+                    if hasattr(linea, "exoneration_id") and linea.exoneration_id:
                         TipoDocumentoEX1 = etree.Element("TipoDocumentoEX1")
                         TipoDocumentoEX1.text = linea.exoneration_id.tipo_documento_id.code
                         Exoneracion.append(TipoDocumentoEX1)
@@ -1735,7 +1755,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                         NumeroDocumento = etree.Element("NumeroDocumento")
                         NumeroDocumento.text = linea.exoneration_id.name
                         Exoneracion.append(NumeroDocumento)
-                        
+
                         Articulo = etree.Element("Articulo")
                         Articulo.text = "1"
                         Exoneracion.append(Articulo)
@@ -1756,18 +1776,16 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                         Exoneracion.append(FechaEmisionEX)
 
                         TarifaExonerada = etree.Element("TarifaExonerada")
-                        TarifaExonerada.text = str(
-                            int(linea.exoneration_id.percentage_exoneration)
-                        )
+                        TarifaExonerada.text = str(int(linea.exoneration_id.percentage_exoneration))
                         Exoneracion.append(TarifaExonerada)
 
                         MontoExoneracion = etree.Element("MontoExoneracion")
                         MontoExoneracion.text = str(round(abs(monto_exonerado), decimales))
                         Exoneracion.append(MontoExoneracion)
                         Impuesto.append(Exoneracion)
-                
+
                 LineaDetalle.append(Impuesto)
-                
+
                 # Accumulate totals based on classification
                 if es_exonerado:
                     # Se reparte la base imponible entre Gravado y Exonerado según porcentaje de exoneración de la tarifa
@@ -1791,11 +1809,11 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                 # ImpuestoAsumidoEmisorFabrica e ImpuestoNeto se incluyen SIEMPRE que hay elemento Impuesto
                 # En v4.4, el elemento Impuesto es obligatorio para todas las líneas, incluso con tarifa 0%
                 impuesto_neto = monto_iva + monto_exonerado_linea
-                
+
                 ImpuestoAsumidoEmisorFabrica = etree.Element("ImpuestoAsumidoEmisorFabrica")
                 ImpuestoAsumidoEmisorFabrica.text = "0"
                 LineaDetalle.append(ImpuestoAsumidoEmisorFabrica)
-                
+
                 ImpuestoNeto = etree.Element("ImpuestoNeto")
                 ImpuestoNeto.text = str(round(impuesto_neto, decimales))
                 LineaDetalle.append(ImpuestoNeto)
@@ -1966,58 +1984,49 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             # Aggregate positive taxes (>= 0) and negative exoneration taxes separately
             taxes_used = {}
             exoneration_used = {}
-            
+
             for linea in order.lines:
                 for tax in linea.tax_ids_after_fiscal_position - servicio_de_mesa_tax:
                     if tax.amount >= 0 and not tax.has_exoneration:
                         # Regular positive tax
                         if tax.id not in taxes_used:
-                            taxes_used[tax.id] = {
-                                'tax': tax,
-                                'monto': 0.0
-                            }
+                            taxes_used[tax.id] = {"tax": tax, "monto": 0.0}
                         monto_tax = round(linea.price_subtotal * tax.amount / 100.0, decimales)
-                        taxes_used[tax.id]['monto'] += monto_tax
+                        taxes_used[tax.id]["monto"] += monto_tax
                     elif tax.amount < 0 and tax.has_exoneration:
                         # Exoneration tax (negative)
                         if tax.id not in exoneration_used:
-                            exoneration_used[tax.id] = {
-                                'tax': tax,
-                                'monto': 0.0
-                            }
+                            exoneration_used[tax.id] = {"tax": tax, "monto": 0.0}
                         monto_exon = round(linea.price_subtotal * tax.amount / 100.0, decimales)
-                        exoneration_used[tax.id]['monto'] += monto_exon
+                        exoneration_used[tax.id]["monto"] += monto_exon
 
             # For each IVA tax, combine with its exoneration if present
             # Group by tax_code and iva_tax_code
             impuestos_agregados = {}
-            
+
             for tax_data in taxes_used.values():
-                tax = tax_data['tax']
+                tax = tax_data["tax"]
                 key = (tax.tax_code, tax.iva_tax_code if tax.tax_code == "01" else "")
-                
+
                 if key not in impuestos_agregados:
-                    impuestos_agregados[key] = {
-                        'tax': tax,
-                        'monto': 0.0
-                    }
-                impuestos_agregados[key]['monto'] += tax_data['monto']
-            
+                    impuestos_agregados[key] = {"tax": tax, "monto": 0.0}
+                impuestos_agregados[key]["monto"] += tax_data["monto"]
+
             # Add exoneration amounts to their corresponding base tax
             for exon_data in exoneration_used.values():
-                exon_tax = exon_data['tax']
+                exon_tax = exon_data["tax"]
                 # Find the corresponding base IVA tax (code 01)
-                key = ("01", exon_tax.iva_tax_code if hasattr(exon_tax, 'iva_tax_code') else "08")
-                
+                key = ("01", exon_tax.iva_tax_code if hasattr(exon_tax, "iva_tax_code") else "08")
+
                 if key in impuestos_agregados:
                     # Add the negative exoneration (which reduces total)
-                    impuestos_agregados[key]['monto'] += exon_data['monto']
+                    impuestos_agregados[key]["monto"] += exon_data["monto"]
 
             # Create TotalDesgloseImpuesto for each unique tax
             for tax_data in impuestos_agregados.values():
-                tax = tax_data['tax']
-                monto = tax_data['monto']
-                
+                tax = tax_data["tax"]
+                monto = tax_data["monto"]
+
                 # Only include if the net amount after exoneration is >= 0
                 if monto >= 0:
                     TotalDesgloseImpuesto = etree.Element("TotalDesgloseImpuesto")
@@ -2039,7 +2048,9 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
 
             TotalImpuesto = etree.Element("TotalImpuesto")
             # TotalImpuesto should be the sum of all TotalDesgloseImpuesto
-            total_impuesto_a_reportar = sum([data['monto'] for data in impuestos_agregados.values() if data['monto'] >= 0])
+            total_impuesto_a_reportar = sum(
+                [data["monto"] for data in impuestos_agregados.values() if data["monto"] >= 0]
+            )
             TotalImpuesto.text = str(round(total_impuesto_a_reportar, decimales))
             ResumenFactura.append(TotalImpuesto)
 
@@ -2935,7 +2946,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
         Clave = etree.Element("Clave")
         Clave.text = invoice.number_electronic
         Documento.append(Clave)
-        
+
         # ProveedorSistemas
         ProveedorSistemas = etree.Element("ProveedorSistemas")
         ProveedorSistemas.text = re.sub("[^0-9]", "", emisor.vat or "")
@@ -2943,11 +2954,22 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
 
         # CodigoActividadEmisor
         CodigoActividadEmisor = etree.Element("CodigoActividadEmisor")
+        if not invoice.company_id.eicr_activity_ids:
+            raise UserError(
+                _(
+                    "The company '%s' has no economic activities configured. "
+                    "Please configure at least one economic activity before issuing electronic invoices."
+                )
+                % (invoice.company_id.name or "")
+            )
         CodigoActividadEmisor.text = invoice.company_id.eicr_activity_ids[0].code
         Documento.append(CodigoActividadEmisor)
-        
+
         # CodigoActividadReceptor
-        if documento in ["FacturaElectronica", "NotaCreditoElectronica"] and len(invoice.partner_id.eicr_activity_ids) > 0:
+        if (
+            documento in ["FacturaElectronica", "NotaCreditoElectronica"]
+            and len(invoice.partner_id.eicr_activity_ids) > 0
+        ):
             CodigoActividadReceptor = etree.Element("CodigoActividadReceptor")
             CodigoActividadReceptor.text = invoice.partner_id.eicr_activity_ids[0].code
             Documento.append(CodigoActividadReceptor)
@@ -3155,7 +3177,12 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
 
         # Condicion Venta
         CondicionVenta = etree.Element("CondicionVenta")
-        if invoice.payment_term_id and len(invoice.payment_term_id.line_ids) > 0 and invoice.payment_term_id.line_ids[0].value == "balance" and invoice.payment_term_id.line_ids[0].days > 0:
+        if (
+            invoice.payment_term_id
+            and len(invoice.payment_term_id.line_ids) > 0
+            and invoice.payment_term_id.line_ids[0].value == "balance"
+            and invoice.payment_term_id.line_ids[0].days > 0
+        ):
             CondicionVenta.text = "02"
             Documento.append(CondicionVenta)
 
@@ -3208,7 +3235,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                 ("iva_tax_code", "=", "04"),
                 ("type_tax_use", "=", "sale"),
                 ("amount", "=", -4),
-                ("company_id", "=", invoice.company_id.id)
+                ("company_id", "=", invoice.company_id.id),
             ]
         )
         totalIVADevuelto = 0.0
@@ -3225,26 +3252,39 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
         for indice, linea in enumerate(invoice.invoice_line_ids.sorted(lambda l: l.sequence)):
             es_servicio = linea.product_id and linea.product_id.type == "service"
             es_mercancia = not es_servicio
-            
+
             # Clasificamos:
             # No Sujeto: No IVA o IVA == 0 -> no_sujeto
             # Exento: IVA configurado con tarifa exenta (iva_tax_code == "10")
             # Gravado: IVA > 0 -> grabado
             # Exonerado: IVA > 0 + deducción (IVA < 0) -> exonerado
 
-            linea_iva = linea.invoice_line_tax_ids.filtered(lambda tax_id: tax_id.tax_code == "01" and tax_id.amount >= 0 and not tax_id.has_exoneration)
-            linea_iva_exoneracion = linea.invoice_line_tax_ids.filtered(lambda tax_id: tax_id.amount < 0 and tax_id.has_exoneration)
+            linea_iva = linea.invoice_line_tax_ids.filtered(
+                lambda tax_id: tax_id.tax_code == "01"
+                and tax_id.amount >= 0
+                and not tax_id.has_exoneration
+            )
+            linea_iva_exoneracion = linea.invoice_line_tax_ids.filtered(
+                lambda tax_id: tax_id.amount < 0 and tax_id.has_exoneration
+            )
 
             if len(linea_iva) > 1:
-                raise UserError("El producto %s solo debe tener una entrada de IVA asociada" % linea.name[:200])
+                raise UserError(
+                    "El producto %s solo debe tener una entrada de IVA asociada" % linea.name[:200]
+                )
             if len(linea_iva_exoneracion) > 1:
-                raise UserError("El producto %s solo debe tener una entrada de IVA exonerada asociada" % linea.name[:200])
+                raise UserError(
+                    "El producto %s solo debe tener una entrada de IVA exonerada asociada"
+                    % linea.name[:200]
+                )
             if linea_iva_exoneracion and not linea.exoneration_id:
-                raise UserError("El producto %s debe tener una exoneración asociada" % linea.name[:200])
+                raise UserError(
+                    "El producto %s debe tener una exoneración asociada" % linea.name[:200]
+                )
 
             # Determinar si tiene IVA configurado
             tiene_iva_configurado = len(linea_iva) > 0
-            
+
             if not tiene_iva_configurado:
                 # No Sujeto: Sin IVA configurado
                 es_no_sujeto = True
@@ -3270,7 +3310,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                 es_gravado = True
                 if linea_iva_exoneracion:
                     # Exonerado: IVA > 0 + deducción (IVA < 0)
-                    es_exonerado = True                    
+                    es_exonerado = True
                 else:
                     es_exonerado = False
             else:
@@ -3282,17 +3322,19 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
 
             # Porcentaje de exoneración sobre la tarifa (solo aplica si es_exonerado True)
             ratio_exoneracion = 0.0
-            if 'es_exonerado' in locals() and es_exonerado and linea_iva and linea_iva_exoneracion:
+            if "es_exonerado" in locals() and es_exonerado and linea_iva and linea_iva_exoneracion:
                 try:
-                    ratio_exoneracion = abs(linea_iva_exoneracion.amount) / (linea_iva.amount or 1.0)
+                    ratio_exoneracion = abs(linea_iva_exoneracion.amount) / (
+                        linea_iva.amount or 1.0
+                    )
                 except Exception:
                     ratio_exoneracion = 0.0
                 if ratio_exoneracion < 0:
                     ratio_exoneracion = 0.0
                 if ratio_exoneracion > 1:
                     ratio_exoneracion = 1.0
-                                    
-            # Contruimos el XML   
+
+            # Contruimos el XML
             LineaDetalle = etree.Element("LineaDetalle")
 
             NumeroLinea = etree.Element("NumeroLinea")
@@ -3355,7 +3397,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                 montoDescuento = round(
                     round(montoTotal, decimales) - round(linea.price_subtotal, decimales), decimales
                 )
-                
+
                 if es_no_sujeto:
                     # Incluye productos sin IVA y productos con IVA al 0%
                     if es_servicio:
@@ -3377,10 +3419,10 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                         totalDescuentosServiciosGravados += montoDescuento
                     elif es_mercancia:
                         totalDescuentosMercanciasGravadas += montoDescuento
-                        
+
                 MontoDescuento.text = str(montoDescuento)
                 Descuento.append(MontoDescuento)
-                
+
                 CodigoDescuento = etree.Element("CodigoDescuento")
                 CodigoDescuento.text = "07"
                 Descuento.append(CodigoDescuento)
@@ -3402,13 +3444,13 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             impuestos = linea.invoice_line_tax_ids - servicio_de_mesa_tax - impuestoIVADevuelto
             monto_exoneracion_linea = 0
             monto_impuestos = 0
-            
+
             total_impuestos_linea = 0
             total_exonerado_linea = 0
-            
+
             monto_iva = 0.0
             monto_exonerado = 0.0
-            
+
             # Acumular totales según clasificación para ResumenFactura
             if es_no_sujeto:
                 if es_servicio:
@@ -3450,32 +3492,34 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                     totalServiciosExentos += linea.price_subtotal
                 elif es_mercancia:
                     totalMercanciasExentas += linea.price_subtotal
-            
+
             # Incluir elemento <Impuesto> si hay IVA configurado (incluso si amount == 0)
             if tiene_iva_configurado:
                 Impuesto = etree.Element("Impuesto")
-                
+
                 Codigo = etree.Element("Codigo")
                 Codigo.text = linea_iva.tax_code
                 Impuesto.append(Codigo)
-                
+
                 CodigoTarifaIVA = etree.Element("CodigoTarifaIVA")
                 CodigoTarifaIVA.text = linea_iva.iva_tax_code
                 Impuesto.append(CodigoTarifaIVA)
-                
+
                 Tarifa = etree.Element("Tarifa")
                 Tarifa.text = str(round(linea_iva.amount, decimales))
                 Impuesto.append(Tarifa)
-                
+
                 monto_iva = round(linea.price_subtotal * linea_iva.amount / 100.00, decimales)
                 total_impuestos_linea += monto_iva
-                
+
                 Monto = etree.Element("Monto")
                 Monto.text = str(round(monto_iva, decimales))
                 Impuesto.append(Monto)
-                
+
                 if es_exonerado:
-                    monto_exonerado = round(linea.price_subtotal * linea_iva_exoneracion.amount / 100.00, decimales)
+                    monto_exonerado = round(
+                        linea.price_subtotal * linea_iva_exoneracion.amount / 100.00, decimales
+                    )
                     total_exonerado_linea += monto_exonerado
                     Exoneracion = etree.Element("Exoneracion")
 
@@ -3486,7 +3530,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                     NumeroDocumento = etree.Element("NumeroDocumento")
                     NumeroDocumento.text = linea.exoneration_id.name
                     Exoneracion.append(NumeroDocumento)
-                    
+
                     Articulo = etree.Element("Articulo")
                     Articulo.text = "1"
                     Exoneracion.append(Articulo)
@@ -3507,18 +3551,16 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                     Exoneracion.append(FechaEmisionEX)
 
                     TarifaExonerada = etree.Element("TarifaExonerada")
-                    TarifaExonerada.text = str(
-                        int(linea.exoneration_id.percentage_exoneration)
-                    )
+                    TarifaExonerada.text = str(int(linea.exoneration_id.percentage_exoneration))
                     Exoneracion.append(TarifaExonerada)
 
                     MontoExoneracion = etree.Element("MontoExoneracion")
                     MontoExoneracion.text = str(round(abs(monto_exonerado), decimales))
                     Exoneracion.append(MontoExoneracion)
                     Impuesto.append(Exoneracion)
-                
+
                 LineaDetalle.append(Impuesto)
-                
+
                 # Nota: es_exento ya no se usa en v4.4, productos con IVA 0% son es_no_sujeto
                 if es_exonerado:
                     # Se reparte la base imponible entre Gravado y Exonerado según porcentaje de exoneración de la tarifa
@@ -3544,15 +3586,15 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                 # ImpuestoAsumidoEmisorFabrica e ImpuestoNeto se incluyen SIEMPRE que hay elemento Impuesto
                 # En v4.4, el elemento Impuesto es obligatorio para todas las líneas, incluso con tarifa 0%
                 impuesto_neto = monto_iva + monto_exonerado
-                
+
                 ImpuestoAsumidoEmisorFabrica = etree.Element("ImpuestoAsumidoEmisorFabrica")
                 ImpuestoAsumidoEmisorFabrica.text = "0"
                 LineaDetalle.append(ImpuestoAsumidoEmisorFabrica)
-                
+
                 ImpuestoNeto = etree.Element("ImpuestoNeto")
                 ImpuestoNeto.text = str(round(impuesto_neto, decimales))
                 LineaDetalle.append(ImpuestoNeto)
-            
+
             ivaDevuelto = abs(
                 sum(
                     linea.invoice_line_tax_ids.filtered(lambda t: t == impuestoIVADevuelto).mapped(
@@ -3579,7 +3621,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             LineaDetalle.append(MontoTotalLinea)
 
             DetalleServicio.append(LineaDetalle)
-            
+
             totalImpuesto += total_impuestos_linea
             totalExonerado += total_exonerado_linea
 
@@ -3621,26 +3663,25 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
         CodigoTipoMoneda.append(TipoCambio)
 
         ResumenFactura.append(CodigoTipoMoneda)
-        
-        
+
         if totalServiciosGravados:
             TotalServGravados = etree.Element("TotalServGravados")
             # TotalServGravados.text = str(round(totalServiciosGravados + totalDescuentosServiciosGravados, decimales))
             TotalServGravados.text = str(round(totalServiciosGravados, decimales))
             ResumenFactura.append(TotalServGravados)
-        
+
         if totalServiciosExentos:
             TotalServExentos = etree.Element("TotalServExentos")
             # TotalServExentos.text = str(round(totalServiciosExentos + totalDescuentosServiciosExentos, decimales))
             TotalServExentos.text = str(round(totalServiciosExentos, decimales))
             ResumenFactura.append(TotalServExentos)
-        
+
         if totalServExonerado:
             TotalServExonerado = etree.Element("TotalServExonerado")
             # TotalServExonerado.text = str(round(totalServExonerado + totalDescuentosServiciosExonerados, decimales))
             TotalServExonerado.text = str(round(totalServExonerado, decimales))
             ResumenFactura.append(TotalServExonerado)
-        
+
         if totalServNoSujeto:
             TotalServNoSujeto = etree.Element("TotalServNoSujeto")
             # TotalServNoSujeto.text = str(round(totalServNoSujeto + totalDescuentosServiciosNoSujeto, decimales))
@@ -3669,7 +3710,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             TotalMercExonerada.text = str(round(totalMercExonerada, decimales))
             # TotalMercExonerada.text = str(round(totalMercExonerada + totalDescuentosMercanciasExoneradas, decimales))
             ResumenFactura.append(TotalMercExonerada)
-            
+
         if totalMercNoSujeta:
             TotalMercNoSujeta = etree.Element("TotalMercNoSujeta")
             TotalMercNoSujeta.text = str(round(totalMercNoSujeta, decimales))
@@ -3698,8 +3739,8 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                 )
             )
             ResumenFactura.append(TotalExento)
-            
-        total_exonerado = (totalServExonerado + totalMercExonerada)
+
+        total_exonerado = totalServExonerado + totalMercExonerada
         if total_exonerado:
             TotalExonerado = etree.Element("TotalExonerado")
             TotalExonerado.text = str(
@@ -3709,8 +3750,13 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                 )
             )
             ResumenFactura.append(TotalExonerado)
-        
-        total_no_sujeto = totalServNoSujeto + totalDescuentosServiciosNoSujeto + totalMercNoSujeta + totalDescuentosMercanciasNoSujeta
+
+        total_no_sujeto = (
+            totalServNoSujeto
+            + totalDescuentosServiciosNoSujeto
+            + totalMercNoSujeta
+            + totalDescuentosMercanciasNoSujeta
+        )
         if total_no_sujeto:
             TotalNoSujeto = etree.Element("TotalNoSujeto")
             TotalNoSujeto.text = str(
@@ -3722,7 +3768,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             ResumenFactura.append(TotalNoSujeto)
 
         total_venta = total_gravado + total_exento + total_exonerado + total_no_sujeto
-        
+
         TotalVenta = etree.Element("TotalVenta")
         TotalVenta.text = str(
             round(
@@ -3731,47 +3777,51 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             )
         )
         ResumenFactura.append(TotalVenta)
-        
+
         total_descuentos = (
-            totalDescuentosServiciosGravados + 
-            totalDescuentosServiciosExentos + 
-            totalDescuentosServiciosExonerados +
-            totalDescuentosServiciosNoSujeto + 
-            totalDescuentosMercanciasGravadas + 
-            totalDescuentosMercanciasExentas + 
-            totalDescuentosMercanciasExoneradas+
-            totalDescuentosMercanciasNoSujeta
+            totalDescuentosServiciosGravados
+            + totalDescuentosServiciosExentos
+            + totalDescuentosServiciosExonerados
+            + totalDescuentosServiciosNoSujeto
+            + totalDescuentosMercanciasGravadas
+            + totalDescuentosMercanciasExentas
+            + totalDescuentosMercanciasExoneradas
+            + totalDescuentosMercanciasNoSujeta
         )
-        
+
         if total_descuentos:
             TotalDescuentos = etree.Element("TotalDescuentos")
-            TotalDescuentos.text = str(
-                round(total_descuentos, decimales)
-            )
+            TotalDescuentos.text = str(round(total_descuentos, decimales))
             ResumenFactura.append(TotalDescuentos)
 
         total_venta_neta = total_venta - total_descuentos
 
         TotalVentaNeta = etree.Element("TotalVentaNeta")
-        TotalVentaNeta.text = str(
-            round(total_venta_neta, decimales)
-        )
+        TotalVentaNeta.text = str(round(total_venta_neta, decimales))
         ResumenFactura.append(TotalVentaNeta)
-        
+
         # TotalDesgloseImpuesto
-        
+
         if (totalImpuesto + totalExonerado) > 0:
-            
-            linea_invoice_iva = invoice.tax_line_ids.filtered(lambda invoice_tax_id: invoice_tax_id.tax_id.tax_code == "01" and invoice_tax_id.tax_id.amount >= 0 and not invoice_tax_id.tax_id.has_exoneration)
-            linea_invoice_iva_exoneracion = invoice.tax_line_ids.filtered(lambda invoice_tax_id: invoice_tax_id.tax_id.amount < 0 and invoice_tax_id.tax_id.has_exoneration)
+            linea_invoice_iva = invoice.tax_line_ids.filtered(
+                lambda invoice_tax_id: invoice_tax_id.tax_id.tax_code == "01"
+                and invoice_tax_id.tax_id.amount >= 0
+                and not invoice_tax_id.tax_id.has_exoneration
+            )
+            linea_invoice_iva_exoneracion = invoice.tax_line_ids.filtered(
+                lambda invoice_tax_id: invoice_tax_id.tax_id.amount < 0
+                and invoice_tax_id.tax_id.has_exoneration
+            )
 
             monto_impuesto = linea_invoice_iva.amount
-            monto_exonerado = linea_invoice_iva_exoneracion.amount if linea_invoice_iva_exoneracion else 0.0
+            monto_exonerado = (
+                linea_invoice_iva_exoneracion.amount if linea_invoice_iva_exoneracion else 0.0
+            )
             impuesto_cobrado = monto_impuesto + monto_exonerado
-            
+
             if impuesto_cobrado >= 0:
                 TotalDesgloseImpuesto = etree.Element("TotalDesgloseImpuesto")
-                
+
                 Codigo = etree.Element("Codigo")
                 Codigo.text = linea_invoice_iva.tax_id.tax_code
                 TotalDesgloseImpuesto.append(Codigo)
@@ -3784,18 +3834,17 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                 TotalMontoImpuesto = etree.Element("TotalMontoImpuesto")
                 TotalMontoImpuesto.text = str(round(impuesto_cobrado, decimales))
                 TotalDesgloseImpuesto.append(TotalMontoImpuesto)
-                
+
                 ResumenFactura.append(TotalDesgloseImpuesto)
-            
+
             # El resto de impuestos
             tax_line_ids = invoice.tax_line_ids - linea_invoice_iva - linea_invoice_iva_exoneracion
             tax_line_ids = tax_line_ids.filtered(lambda tax_line_id: tax_line_id.amount > 0)
-            
-            for invoice_tax_line in tax_line_ids:
 
+            for invoice_tax_line in tax_line_ids:
                 if impuesto_cobrado >= 0:
                     TotalDesgloseImpuesto = etree.Element("TotalDesgloseImpuesto")
-                    
+
                     Codigo = etree.Element("Codigo")
                     Codigo.text = invoice_tax_line.tax_id.tax_code
                     TotalDesgloseImpuesto.append(Codigo)
@@ -3808,7 +3857,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                     TotalMontoImpuesto = etree.Element("TotalMontoImpuesto")
                     TotalMontoImpuesto.text = str(round(invoice_tax_line.amount_total, decimales))
                     TotalDesgloseImpuesto.append(TotalMontoImpuesto)
-                    
+
                     ResumenFactura.append(TotalDesgloseImpuesto)
 
             TotalImpuesto = etree.Element("TotalImpuesto")
@@ -3833,8 +3882,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             TotalOtrosCargos = etree.Element("TotalOtrosCargos")
             TotalOtrosCargos.text = str(round(totalImpuestoServicio, decimales))
             ResumenFactura.append(TotalOtrosCargos)
-            
-        
+
         # MedioPago
         # Este campo es de carácter obligatorio en todos los casos,
         # excepto cuando se utilice en el campo condición de la venta,
@@ -3848,15 +3896,16 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
 
             # TipoMedioPago -> MedioPago
             TipoMedioPago = etree.Element("TipoMedioPago")
-            TipoMedioPago.text = invoice.payment_methods_id.sequence if invoice.payment_methods_id else "01"
+            TipoMedioPago.text = (
+                invoice.payment_methods_id.sequence if invoice.payment_methods_id else "01"
+            )
             MedioPago.append(TipoMedioPago)
-            
+
             # MedioPagoOtros
             # Será obligatorio en caso de utilizar el código 99 de
             # Otros" de la nota 6. Se debe describir puntualmente
             # el medio de pago utilizado
             if invoice.payment_methods_id.sequence in ["99"]:
-
                 # MedioPagoOtros -> MedioPago
                 MedioPagoOtros = etree.Element("MedioPagoOtros")
                 MedioPagoOtros.text = "Otros"
@@ -3881,9 +3930,9 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
         ResumenFactura.append(TotalComprobante)
 
         Documento.append(ResumenFactura)
-        
+
         # Fin de XML
-        
+
         if invoice.type == "out_invoice" and invoice.partner_id.extra_node_ids:
             for extra_node in invoice.partner_id.extra_node_ids:
                 Nodo = etree.Element(extra_node.node_location.strip())
@@ -4245,9 +4294,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             # Parse precio_unitario to handle comma decimal separators
             precio_unitario_text = linea.find("PrecioUnitario").text
             precio_unitario = (
-                float(precio_unitario_text.replace(",", "."))
-                if precio_unitario_text
-                else 0.0
+                float(precio_unitario_text.replace(",", ".")) if precio_unitario_text else 0.0
             )
 
             descripcion = linea.find("Detalle").text
@@ -4268,9 +4315,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             if descuento is not None and descuento.find("MontoDescuento") is not None:
                 monto_descuento_text = descuento.find("MontoDescuento").text
                 monto_descuento = (
-                    float(monto_descuento_text.replace(",", "."))
-                    if monto_descuento_text
-                    else 0.0
+                    float(monto_descuento_text.replace(",", ".")) if monto_descuento_text else 0.0
                 )
                 porcentaje_descuento = monto_descuento * 100 / total if total else 0.0
             # Taxes (Impuesto)
@@ -4318,15 +4363,12 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                 # invoice.invoice_line_ids += line
             else:
                 line = self.env["account.invoice.line"].new(vals)
-                
 
         # OtrosCargos
         for cargo in otros_cargos:
             detalle = cargo.find("Detalle").text if cargo.find("Detalle") is not None else ""
             monto_text = (
-                cargo.find("MontoCargo").text
-                if cargo.find("MontoCargo") is not None
-                else "0.0"
+                cargo.find("MontoCargo").text if cargo.find("MontoCargo") is not None else "0.0"
             )
             monto = float(monto_text.replace(",", ".")) if monto_text else 0.0
             vals = {
@@ -4737,9 +4779,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
 
     @api.model
     def actualizar_info(self, partner_id):
-        _logger.info(
-            "Updating partner info for %s (ID: %s)" % (partner_id.name, partner_id.id)
-        )
+        _logger.info("Updating partner info for %s (ID: %s)" % (partner_id.name, partner_id.id))
         info = self.env["eicr.hacienda"].get_info_contribuyente(partner_id.vat)
         if info:
             _logger.info("API response received for VAT %s" % partner_id.vat)
@@ -4756,53 +4796,66 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                 _logger.info("Set identification type: %s" % info["tipoIdentificacion"])
 
             # actividad económica - Updated for new API format (CIIU4 only)
-            if "actividades" in info and info["actividades"]:
-                ciiu4_codes = []
+            if "actividades" in info:
+                activities_data = []
 
                 for actividad in info["actividades"]:
                     if actividad.get("estado") == "A":  # Only active activities
-                        # Only add CIIU4 code (main codigo) - ignore CIIU3 for backwards compatibility
                         ciiu4_code = actividad.get("codigo")
+                        descripcion = actividad.get("descripcion", "")
                         if ciiu4_code:
-                            ciiu4_codes.append(ciiu4_code)
+                            activities_data.append({"code": ciiu4_code, "descripcion": descripcion})
                             _logger.info(
-                                "Found CIIU4 activity: %s - %s"
-                                % (ciiu4_code, actividad.get("descripcion", ""))
+                                "Found CIIU4 activity: %s - %s" % (ciiu4_code, descripcion)
                             )
 
-                # Remove duplicates and search for CIIU4 economic activities only
-                unique_ciiu4_codes = list(set(ciiu4_codes))
-                _logger.info(
-                    "Searching for CIIU4 economic activities with codes: %s"
-                    % unique_ciiu4_codes
-                )
-
-                found_activities = self.env["economic_activity"].search(
-                    [
-                        ("code", "in", unique_ciiu4_codes),
-                        ("tipo", "=", "ciiu4"),  # Only CIIU4 activities
-                    ]
-                )
-
-                # Replace all existing activities with only CIIU4 ones from API
-                partner_id.eicr_activity_ids = found_activities
-                _logger.info(
-                    "Replaced with %d CIIU4 economic activities in system"
-                    % len(found_activities)
-                )
-
-                # Log any CIIU4 codes that weren't found
-                found_codes = found_activities.mapped("code")
-                missing_codes = [
-                    code for code in unique_ciiu4_codes if code not in found_codes
-                ]
-                if missing_codes:
-                    _logger.warning(
-                        "CIIU4 economic activity codes not found in system: %s"
-                        % missing_codes
+                if activities_data:
+                    # Get unique codes
+                    unique_codes = list(set([a["code"] for a in activities_data]))
+                    _logger.info(
+                        "Searching for CIIU4 economic activities with codes: %s" % unique_codes
                     )
+
+                    # Find existing activities
+                    found_activities = self.env["economic_activity"].search(
+                        [
+                            ("code", "in", unique_codes),
+                            ("tipo", "=", "ciiu4"),
+                        ]
+                    )
+                    found_codes = found_activities.mapped("code")
+
+                    # Create missing activities
+                    missing_codes = [code for code in unique_codes if code not in found_codes]
+                    if missing_codes:
+                        _logger.info(
+                            "Creating %d missing CIIU4 economic activities: %s"
+                            % (len(missing_codes), missing_codes)
+                        )
+                        for activity_data in activities_data:
+                            if activity_data["code"] in missing_codes:
+                                new_activity = self.env["economic_activity"].create(
+                                    {
+                                        "code": activity_data["code"],
+                                        "name": activity_data["descripcion"],
+                                        "tipo": "ciiu4",
+                                    }
+                                )
+                                found_activities |= new_activity
+                                _logger.info(
+                                    "Created CIIU4 activity: %s - %s"
+                                    % (activity_data["code"], activity_data["descripcion"])
+                                )
+
+                    # Set activities from API
+                    partner_id.eicr_activity_ids = found_activities
+                    _logger.info("Set %d CIIU4 economic activities for partner" % len(found_activities))
+                else:
+                    # API returned empty or no active activities - clear partner activities
+                    partner_id.eicr_activity_ids = False
+                    _logger.warning("API returned no active activities - cleared partner activities")
             else:
-                _logger.warning("No activities found in API response")
+                _logger.warning("No activities field in API response")
 
             # nombre
             if "nombre" in info and partner_id.name in ("", "My Company", None, False):
@@ -4838,9 +4891,7 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                 if "mensaje" in situacion:
                     _logger.warning("Tax situation message: %s" % situacion["mensaje"])
         else:
-            _logger.warning(
-                "No information received from API for VAT: %s" % partner_id.vat
-            )
+            _logger.warning("No information received from API for VAT: %s" % partner_id.vat)
 
     def _get_partner_from_xml(self, xml_encoded, customer=False, supplier=True):
         xml = etree.fromstring(base64.b64decode(xml_encoded))

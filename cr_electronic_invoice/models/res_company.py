@@ -7,59 +7,110 @@ _logger = logging.getLogger(__name__)
 
 
 class CompanyElectronic(models.Model):
-    _name = 'res.company'
-    _inherit = ['res.company', 'mail.thread', ]
+    _name = "res.company"
+    _inherit = [
+        "res.company",
+        "mail.thread",
+    ]
 
     commercial_name = fields.Char(string="Nombre comercial")
     phone_code = fields.Char(string="Código de teléfono", size=3, default="506")
 
-    identification_id = fields.Many2one(comodel_name="identification.type", string="Tipo de identificacion")
+    identification_id = fields.Many2one(
+        comodel_name="identification.type", string="Tipo de identificacion"
+    )
     district_id = fields.Many2one(comodel_name="res.country.district", string="Distrito")
     county_id = fields.Many2one(comodel_name="res.country.county", string="Cantón")
     neighborhood_id = fields.Many2one(comodel_name="res.country.neighborhood", string="Barrios")
 
-    eicr_activity_ids = fields.Many2many('economic_activity', string='Actividades Económicas', oldname='eicr_activity_id')
+    eicr_activity_ids = fields.Many2many(
+        "economic_activity", string="Actividades Económicas", oldname="eicr_activity_id"
+    )
 
-    eicr_version_id = fields.Many2one('electronic_invoice.version', 'Versión de la Facturación Electrónica')
-    eicr_username = fields.Char(string="Usuario", oldname='frm_ws_identificador')
-    eicr_password = fields.Char(string="Contraseña", oldname='frm_ws_password')
-    eicr_signature = fields.Binary(string="Llave Criptográfica", oldname='signature')
-    eicr_pin = fields.Char(string="PIN", oldname='frm_pin')
+    eicr_version_id = fields.Many2one(
+        "electronic_invoice.version", "Versión de la Facturación Electrónica"
+    )
+    eicr_username = fields.Char(string="Usuario", oldname="frm_ws_identificador")
+    eicr_password = fields.Char(string="Contraseña", oldname="frm_ws_password")
+    eicr_signature = fields.Binary(string="Llave Criptográfica", oldname="signature")
+    eicr_pin = fields.Char(string="PIN", oldname="frm_pin")
 
     eicr_environment = fields.Selection(
-        selection=[('disabled', 'Deshabilitado'), ('api-stag', 'Pruebas'), ('api-prod', 'Producción')],
+        selection=[
+            ("disabled", "Deshabilitado"),
+            ("api-stag", "Pruebas"),
+            ("api-prod", "Producción"),
+        ],
         string="Ambiente",
-        required=True, default='disabled',
-        help='Seleccione el punto de conexión del Ministerio de Hacienda a usar',
-        oldname='frm_ws_ambiente')
+        required=True,
+        default="disabled",
+        help="Seleccione el punto de conexión del Ministerio de Hacienda a usar",
+        oldname="frm_ws_ambiente",
+    )
 
-    eicr_token = fields.Text('Token de sesión para el sistema de recepción de comprobantes', oldname='token')
+    eicr_token = fields.Text(
+        "Token de sesión para el sistema de recepción de comprobantes", oldname="token"
+    )
 
     @api.multi
     def action_get_token(self, var=None):
-        _logger.info('checking token [%s]' % self.eicr_token)
-        self.env['eicr.hacienda'].get_token(self)
+        _logger.info("checking token [%s]" % self.eicr_token)
+        self.env["eicr.hacienda"].get_token(self)
 
     def action_update_info(self):
-        info = self.env['eicr.hacienda'].get_info_contribuyente(self.vat)
+        info = self.env["eicr.hacienda"].get_info_contribuyente(self.vat)
         if info:
-            self.identification_id = self.env['identification.type'].search([('code', '=', info['tipoIdentificacion'])])
-            actividades = [a['codigo'] for a in info['actividades'] if a['estado'] == 'A']
-            self.eicr_activity_ids = self.env['economic_activity'].search([('code', 'in', actividades)])
+            self.identification_id = self.env["identification.type"].search(
+                [("code", "=", info["tipoIdentificacion"])]
+            )
+
+            # Collect activity data from API
+            activities_data = {}
+            for a in info["actividades"]:
+                if a["estado"] == "A":
+                    activities_data[a["codigo"]] = a.get("descripcion", a["codigo"])
+
+            actividades = list(activities_data.keys())
+
+            # Find existing economic activities
+            found_activities = self.env["economic_activity"].search([("code", "in", actividades)])
+            found_codes = set(found_activities.mapped("code"))
+
+            # Create missing economic activities
+            missing_codes = set(actividades) - found_codes
+            for code in missing_codes:
+                new_activity = self.env["economic_activity"].create(
+                    {
+                        "code": code,
+                        "name": activities_data[code],
+                        "tipo": "ciiu4",
+                    }
+                )
+                found_activities |= new_activity
+                _logger.info(
+                    "Created missing economic activity: %s - %s" % (code, activities_data[code])
+                )
+
+            # Assign all activities to company
+            self.eicr_activity_ids = found_activities
             self.env.cr.commit()
 
-    @api.onchange('vat')
+    @api.onchange("vat")
     def _onchange_vat(self):
-        identificacion = re.sub('[^0-9]', '', self.vat or '')
+        identificacion = re.sub("[^0-9]", "", self.vat or "")
         if len(identificacion) >= 9:
-            info = self.env['eicr.hacienda'].get_info_contribuyente(self.vat)
+            info = self.env["eicr.hacienda"].get_info_contribuyente(self.vat)
             if info:
-                self.identification_id = self.env['identification.type'].search(
-                    [('code', '=', info['tipoIdentificacion'])])
-                actividades = [a['codigo'] for a in info['actividades'] if a['estado'] == 'A']
-                self.eicr_activity_ids = self.env['economic_activity'].search([('code', 'in', actividades)])
-                if not self.name or self.name == 'My Company' : self.name = info['nombre']
-                if info['tipoIdentificacion'] in ('01', '03', '04'):
+                self.identification_id = self.env["identification.type"].search(
+                    [("code", "=", info["tipoIdentificacion"])]
+                )
+                actividades = [a["codigo"] for a in info["actividades"] if a["estado"] == "A"]
+                self.eicr_activity_ids = self.env["economic_activity"].search(
+                    [("code", "in", actividades)]
+                )
+                if not self.name or self.name == "My Company":
+                    self.name = info["nombre"]
+                if info["tipoIdentificacion"] in ("01", "03", "04"):
                     self.partner_id.is_company = False
-                elif info['tipoIdentificacion'] in ('02'):
+                elif info["tipoIdentificacion"] in ("02"):
                     self.partner_id.is_company = True

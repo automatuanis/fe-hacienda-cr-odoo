@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree view for partner update info lines -->
+    <record id="res_partner_update_info_line_view_tree" model="ir.ui.view">
+        <field name="name">res.partner.update.info.line.tree</field>
+        <field name="model">res.partner.update.info.line</field>
+        <field name="arch" type="xml">
+            <tree string="Partners a Actualizar">
+                <field name="name"/>
+                <field name="vat"/>
+                <field name="identification_id"/>
+                <field name="regimen_tributario"/>
+                <field name="activity_names"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Wizard form view -->
+    <record id="res_partner_update_info_wizard_form" model="ir.ui.view">
+        <field name="name">res.partner.update.info.wizard.form</field>
+        <field name="model">res.partner.update.info.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Actualizar Información Tributaria">
+                <group>
+                    <group>
+                        <field name="total_selected" readonly="1"/>
+                        <field name="total_with_vat" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="total_without_vat" readonly="1"/>
+                    </group>
+                </group>
+                <separator string="Partners Seleccionados"/>
+                <field name="partner_line_ids" nolabel="1">
+                    <tree string="Partners">
+                        <field name="name"/>
+                        <field name="vat"/>
+                        <field name="identification_id"/>
+                        <field name="regimen_tributario"/>
+                        <field name="activity_names"/>
+                    </tree>
+                </field>
+                <footer>
+                    <button name="action_update_info" string="Actualizar Información" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-default" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action to open the wizard -->
+    <record id="action_res_partner_update_info_wizard" model="ir.actions.act_window">
+        <field name="name">Actualizar Información Tributaria</field>
+        <field name="res_model">res.partner.update.info.wizard</field>
+        <field name="view_type">form</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>
