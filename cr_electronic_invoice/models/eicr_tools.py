@@ -1220,10 +1220,18 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
         Documento.append(CodigoActividadEmisor)
 
         # CodigoActividadReceptor (NEW in v4.4, only for FacturaElectronica)
-        if documento == "FacturaElectronica" and receptor.eicr_activity_ids:
-            CodigoActividadReceptor = etree.Element("CodigoActividadReceptor")
-            CodigoActividadReceptor.text = receptor.eicr_activity_ids[0].code
-            Documento.append(CodigoActividadReceptor)
+        if receptor_valido and documento == "FacturaElectronica":
+            # Always refresh receptor info from Hacienda API to get current activity codes
+            try:
+                self.actualizar_info(receptor)
+            except Exception as e:
+                _logger.warning(
+                    "Could not update receptor info for %s: %s" % (receptor.name, str(e))
+                )
+            if len(receptor.eicr_activity_ids) > 0:
+                CodigoActividadReceptor = etree.Element("CodigoActividadReceptor")
+                CodigoActividadReceptor.text = receptor.eicr_activity_ids[0].code
+                Documento.append(CodigoActividadReceptor)
 
         # NumeroConsecutivo
         NumeroConsecutivo = etree.Element("NumeroConsecutivo")
@@ -1703,17 +1711,18 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                 LineaDetalle.append(ImpuestoNeto)
 
                 # Still classify as No Sujeto for totals
+                # Use gross amount (price_unit * qty) to match Hacienda validation
                 if es_servicio:
-                    totalServNoSujeto += linea.price_subtotal
+                    totalServNoSujeto += linea.price_unit * linea.qty
                 elif es_mercancia:
-                    totalMercNoSujeta += linea.price_subtotal
+                    totalMercNoSujeta += linea.price_unit * linea.qty
             elif es_exento:
-                # Exento: Update totals only (no Impuesto element for pure exento in invoices)
-                # But for POS, we still need the Impuesto element with code 10
+                # Exento: Update totals only
+                # Use gross amount (price_unit * qty) to match Hacienda validation
                 if es_servicio:
-                    totalServiciosExentos += linea.price_subtotal
+                    totalServiciosExentos += linea.price_unit * linea.qty
                 elif es_mercancia:
-                    totalMercanciasExentas += linea.price_subtotal
+                    totalMercanciasExentas += linea.price_unit * linea.qty
 
             # Incluir elemento <Impuesto> si hay IVA configurado (incluso si amount == 0)
             if tiene_iva_configurado:
@@ -1943,7 +1952,6 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
             ResumenFactura.append(TotalExonerado)
 
         # v4.4 NEW: TotalNoSujeto
-        # Note: Do NOT include discounts here - they are reported separately in TotalDescuentos
         total_no_sujeto = totalServNoSujeto + totalMercNoSujeta
         if total_no_sujeto:
             TotalNoSujeto = etree.Element("TotalNoSujeto")

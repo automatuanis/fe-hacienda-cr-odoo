@@ -96,15 +96,28 @@ class PosOrder(models.Model):
 
     @api.multi
     def action_remake_xml(self):
-        """Open wizard to regenerate XML for rejected electronic invoices"""
-        self.ensure_one()
+        """Open wizard for single or multiple POS orders"""
+        if len(self) == 1:
+            view_id = self.env.ref('cr_pos_electronic_invoice.pos_order_remake_xml_view_wizard_form').id
+            context = {'default_order_id': self.id}
+        else:
+            view_id = self.env.ref('cr_pos_electronic_invoice.pos_order_remake_xml_view_wizard_form_multi').id
+            context = {
+                'active_ids': self.ids,
+                'active_model': 'pos.order',
+            }
+
         return {
             'name': 'Regenerar XML',
             'type': 'ir.actions.act_window',
             'view_mode': 'form',
             'res_model': 'pos.order.remake_xml',
+            'view_id': view_id,
             'target': 'new',
-            'context': {
-                'default_order_id': self.id,
-            }
+            'context': context,
         }
+
+    @api.multi
+    def action_batch_remake_xml(self):
+        """Open wizard with preview for multiple selected POS orders"""
+        return self.action_remake_xml()

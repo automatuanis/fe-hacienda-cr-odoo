@@ -1,4 +1,74 @@
 <odoo>
+    <!-- Tree view for order lines -->
+    <record id="pos_order_remake_xml_line_view_tree" model="ir.ui.view">
+        <field name="name">pos.order.remake_xml.line.tree</field>
+        <field name="model">pos.order.remake_xml.line</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="order_name"/>
+                <field name="order_date"/>
+                <field name="partner_name"/>
+                <field name="amount_total"/>
+                <field name="state_tributacion"/>
+                <field name="respuesta_tributacion"/>
+                <field name="can_process"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Multi-order form view -->
+    <record id="pos_order_remake_xml_view_wizard_form_multi" model="ir.ui.view">
+        <field name="name">pos.order.remake_xml.form.multi</field>
+        <field name="model">pos.order.remake_xml</field>
+        <field name="arch" type="xml">
+            <form string="Regenerar XML - Múltiples Órdenes POS">
+                <group>
+                    <group>
+                        <label string="Órdenes Seleccionadas" colspan="2"/>
+                        <div class="oe_left oe_edit_only">
+                            <field name="order_count" class="oe_inline"/> seleccionadas
+                        </div>
+                        <div class="oe_left oe_edit_only">
+                            <field name="processable_count" class="oe_inline"/> procesables
+                        </div>
+                        <div class="oe_left oe_edit_only" attrs="{'invisible': [('blocked_count', '=', 0)]}">
+                            <field name="blocked_count" class="oe_inline"/> bloqueadas (aceptadas)
+                        </div>
+                    </group>
+                    <group>
+                        <field name="keep_clave"/>
+                        <field name="keep_date"/>
+                        <field name="new_date" attrs="{'invisible': [('keep_date', '=', True)], 'required': [('keep_date', '=', False)]}"/>
+                    </group>
+                </group>
+                <notebook>
+                    <page string="Órdenes">
+                        <field name="order_ids" invisible="1"/>
+                        <field name="order_line_ids" nolabel="1">
+                            <tree>
+                                <field name="order_name"/>
+                                <field name="order_date"/>
+                                <field name="partner_name"/>
+                                <field name="amount_total"/>
+                                <field name="state_tributacion"/>
+                                <field name="respuesta_tributacion"/>
+                                <field name="can_process"/>
+                            </tree>
+                        </field>
+                    </page>
+                </notebook>
+                <div class="alert alert-warning" role="alert" attrs="{'invisible': [('blocked_count', '=', 0)]}">
+                    <strong>Atención:</strong> Las órdenes en estado "aceptado" no pueden ser reprocesadas y serán omitidas.
+                </div>
+                <footer>
+                    <button name="action_remake_xml_confirm" string="Regenerar" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Single order form view (backward compatibility) -->
     <record id="pos_order_remake_xml_view_wizard_form" model="ir.ui.view">
         <field name="name">pos.order.remake_xml.form</field>
         <field name="model">pos.order.remake_xml</field>
@@ -6,6 +76,8 @@
             <form string="Regenerar XML">
                 <group>
                     <field name="order_id" invisible="1"/>
+                    <field name="order_ids" invisible="1"/>
+                    <field name="order_line_ids" invisible="1"/>
                     <field name="keep_clave"/>
                     <field name="keep_date"/>
                     <field name="new_date" attrs="{'invisible': [('keep_date', '=', True)], 'required': [('keep_date', '=', False)]}"/>

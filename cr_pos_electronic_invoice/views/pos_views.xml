@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 	<data>
+		<record id="action_pos_order_batch_remake_xml" model="ir.actions.server">
+			<field name="name">Regenerar XML (lote)</field>
+			<field name="model_id" ref="point_of_sale.model_pos_order"/>
+			<field name="binding_model_id" ref="point_of_sale.model_pos_order"/>
+			<field name="state">code</field>
+			<field name="code">action = records.action_batch_remake_xml()</field>
+		</record>
+
 		<!--<record id="view_account_journal_pos_electronic_invoice_form" model="ir.ui.view">-->
 			<!--<field name="name">account.journal.pos.electronic.invoice.form</field>-->
 			<!--<field name="model">account.journal</field>-->
