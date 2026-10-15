@@ -1228,9 +1228,10 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                 _logger.warning(
                     "Could not update receptor info for %s: %s" % (receptor.name, str(e))
                 )
-            if len(receptor.eicr_activity_ids) > 0:
+            actividad_receptor = receptor._eicr_activity()
+            if actividad_receptor:
                 CodigoActividadReceptor = etree.Element("CodigoActividadReceptor")
-                CodigoActividadReceptor.text = receptor.eicr_activity_ids[0].code
+                CodigoActividadReceptor.text = actividad_receptor.code
                 Documento.append(CodigoActividadReceptor)
 
         # NumeroConsecutivo
@@ -2974,12 +2975,10 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
         Documento.append(CodigoActividadEmisor)
 
         # CodigoActividadReceptor
-        if (
-            documento in ["FacturaElectronica", "NotaCreditoElectronica"]
-            and len(invoice.partner_id.eicr_activity_ids) > 0
-        ):
+        actividad_receptor = invoice.partner_id._eicr_activity()
+        if documento in ["FacturaElectronica", "NotaCreditoElectronica"] and actividad_receptor:
             CodigoActividadReceptor = etree.Element("CodigoActividadReceptor")
-            CodigoActividadReceptor.text = invoice.partner_id.eicr_activity_ids[0].code
+            CodigoActividadReceptor.text = actividad_receptor.code
             Documento.append(CodigoActividadReceptor)
 
         # NumeroConsecutivo
@@ -4858,9 +4857,14 @@ class ElectronicInvoiceCostaRicaTools(models.AbstractModel):
                     # Set activities from API
                     partner_id.eicr_activity_ids = found_activities
                     _logger.info("Set %d CIIU4 economic activities for partner" % len(found_activities))
+                    # Keep the user's chosen activity only while Hacienda still lists it as active
+                    if partner_id.eicr_activity_id and partner_id.eicr_activity_id not in found_activities:
+                        partner_id.eicr_activity_id = False
                 else:
                     # API returned empty or no active activities - clear partner activities
                     partner_id.eicr_activity_ids = False
+                    if partner_id.eicr_activity_id:
+                        partner_id.eicr_activity_id = False
                     _logger.warning("API returned no active activities - cleared partner activities")
             else:
                 _logger.warning("No activities field in API response")
