@@ -30,6 +30,9 @@ class ResPartner(models.Model):
     eicr_activity_ids = fields.Many2many('economic_activity', 'economic_activity_res_partner_rel',
                                          'res_partner_id', 'economic_activity_id', 
                                          string='Actividades Económicas')
+    eicr_activity_id = fields.Many2one('economic_activity', string='Actividad para facturar',
+                                       help='Actividad económica de este contacto que se envía en los documentos '
+                                            'electrónicos. Si se deja vacía se usa la primera de sus actividades.')
     eicr_regimen = fields.Selection(REGIMENES, 'Régimen Tributario', default='0')
 
     email_facturas = fields.Char()
@@ -45,6 +48,20 @@ class ResPartner(models.Model):
         eicr = self.env['eicr.tools']
         for partner in self:
             eicr.actualizar_info(partner)
+
+    def _eicr_activity(self):
+        """Activity to send in electronic documents: the chosen one, else the first of the contact's activities.
+        A child contact without activities of its own uses its company's."""
+        self.ensure_one()
+        partner = self if self.eicr_activity_ids else self.commercial_partner_id
+        if partner.eicr_activity_id and partner.eicr_activity_id in partner.eicr_activity_ids:
+            return partner.eicr_activity_id
+        return partner.eicr_activity_ids[:1]
+
+    @api.onchange('eicr_activity_ids')
+    def _onchange_eicr_activity_ids(self):
+        if self.eicr_activity_id not in self.eicr_activity_ids:
+            self.eicr_activity_id = False
 
     @api.onchange('vat')
     def _onchange_state(self):
